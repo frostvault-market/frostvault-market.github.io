@@ -4,7 +4,7 @@
 
 الملفات:
 - `schema.sql`: قاعدة البيانات وقواعد الأمان. بتتشغل مرة واحدة في Supabase.
-- `app/`: الأبلكيشن نفسه (ويب أب). ده الفولدر اللي بيترفع على الاستضافة.
+- `docs/`: الأبلكيشن نفسه (ويب أب). ده الفولدر اللي بيترفع على الاستضافة.
 
 ## 1. جهّز قاعدة البيانات
 1. افتح مشروعك في Supabase.
@@ -14,12 +14,12 @@
 ## 2. اربط الأبلكيشن بمشروعك
 1. في Supabase: Project Settings ثم API.
 2. انسخ الـ Project URL والـ anon key (ممكن يكون اسمه publishable key).
-3. افتح `app/config.js` وحطهم مكان `PASTE_PROJECT_URL` و `PASTE_ANON_KEY`.
+3. افتح `docs/config.js` وحطهم مكان `PASTE_PROJECT_URL` و `PASTE_ANON_KEY`.
 
 مهم: متحطش الـ service_role key أو أي secret key في الملف ده أبدًا. اللي معاه المفتاح ده يقدر يعدّي كل قواعد الأمان.
 
 ## 3. ارفع الأبلكيشن
-ارفع فولدر `app/` على أي استضافة ملفات ثابتة مجانية (زي Netlify أو Cloudflare Pages أو GitHub Pages). هتاخد لينك https، وده اللينك اللي تبعته للناس.
+ارفع فولدر `docs/` على أي استضافة ملفات ثابتة مجانية (زي Netlify أو Cloudflare Pages أو GitHub Pages). هتاخد لينك https، وده اللينك اللي تبعته للناس.
 
 بعدها في Supabase: Authentication ثم URL Configuration، وحط اللينك ده في Site URL، عشان إيميلات التأكيد ترجع المستخدم للأبلكيشن.
 
