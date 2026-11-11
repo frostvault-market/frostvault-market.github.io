@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101B3A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="FrostVault">
+<title>FrostVault</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800&display=swap">
+<style>
+:root{--bg:#101B3A;--deep:#0B1330;--panel:#1B2B57;--line:#33509F;--btn2:#2A418A;--btn2line:#4C6BD0;--ice:#6FE3FF;--ember:#FF9A2E;--gold:#FFD23F;--muted:#B9C6EA;--soft:#DCE6FF}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--deep);color:#fff;font-family:Nunito,system-ui,sans-serif;font-weight:600;-webkit-text-size-adjust:100%}
+#app{position:relative;max-width:480px;min-height:100dvh;margin:0 auto;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+#sky{position:absolute;left:0;top:0;width:100%;height:150px;z-index:0;pointer-events:none}
+header,main,nav{position:relative;z-index:1}
+header{display:flex;justify-content:space-between;align-items:center;padding:calc(16px + env(safe-area-inset-top)) 16px 6px}
+.logo{display:flex;align-items:center;gap:8px;color:#fff;text-decoration:none;font-family:'Lilita One',sans-serif;font-size:26px;letter-spacing:.5px}
+.logo i{width:40px;height:40px;border-radius:12px;background:var(--ice);box-shadow:0 4px 0 #2A8FB0;display:flex;align-items:center;justify-content:center}
+main{flex:1;padding:10px 16px 20px;display:flex;flex-direction:column;gap:12px}
+nav{position:sticky;bottom:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:var(--deep);border-top:2px solid var(--line)}
+nav a{min-height:56px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:800;color:var(--muted);text-decoration:none}
+nav a.on{background:var(--btn2);color:var(--ice)}
+h1{margin:0;font-family:'Lilita One',sans-serif;font-weight:400;font-size:28px;line-height:32px}
+h2{margin:0;font-family:'Lilita One',sans-serif;font-weight:400;font-size:19px}
+p{margin:0}
+a{color:var(--ice)}
+.muted{color:var(--muted);font-size:13px;line-height:18px}
+.small{font-size:12px;line-height:17px}
+.row{display:flex;align-items:center;gap:10px}
+.between{justify-content:space-between}
+.col{display:flex;flex-direction:column;gap:10px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.panel{padding:14px;border-radius:18px;background:var(--panel);border:2px solid var(--line);box-shadow:0 5px 0 var(--deep)}
+.panel.ice{border-color:var(--ice)}
+.panel.warn{background:#3A2410;border-color:var(--ember)}
+.btn,.btn2{display:flex;align-items:center;justify-content:center;width:100%;min-height:54px;padding:8px 14px;border-radius:16px;font-family:'Lilita One',sans-serif;font-size:19px;letter-spacing:.5px;text-decoration:none;text-align:center;cursor:pointer}
+.btn{background:var(--ember);border:2px solid #FFC37A;box-shadow:0 5px 0 #B85A00;color:#2B1400}
+.btn2{min-height:46px;background:var(--btn2);border:2px solid var(--btn2line);box-shadow:0 4px 0 #14204A;color:#fff;font-family:inherit;font-weight:800;font-size:14px;letter-spacing:0}
+.btn:active,.btn2:active{transform:translateY(3px);box-shadow:0 1px 0 #14204A}
+.btn[disabled],.btn2[disabled]{opacity:.55;cursor:default}
+.icon-btn{width:44px;height:44px;min-height:44px;padding:0;border-radius:14px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{min-height:44px;padding:0 12px;border-radius:14px;border:2px solid var(--btn2line);background:var(--btn2);box-shadow:0 4px 0 #14204A;color:#fff;font:800 13px Nunito,sans-serif;cursor:pointer}
+.chip.on{border-color:#FFE58A;background:var(--gold);box-shadow:0 4px 0 #A9820A;color:#2B2000}
+label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:800;letter-spacing:.8px;color:var(--ice);text-transform:uppercase}
+label.check{flex-direction:row;gap:12px;align-items:flex-start;font-size:12px;line-height:17px;font-weight:600;letter-spacing:0;color:var(--muted);text-transform:none}
+label.check input{width:22px;height:22px;min-height:0;margin:0;flex-shrink:0;accent-color:var(--ice)}
+input,select,textarea{width:100%;min-height:46px;border-radius:12px;border:2px solid var(--line);background:var(--deep);color:#fff;font:800 15px Nunito,sans-serif;padding:8px 12px}
+textarea{min-height:90px;resize:vertical;font-weight:600}
+input:focus,select:focus,textarea:focus,button:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.card{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:18px;background:var(--panel);border:2px solid var(--line);box-shadow:0 5px 0 var(--deep);color:#fff;text-decoration:none}
+.emblem{width:56px;height:56px;flex-shrink:0;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#1A1430;font-family:'Lilita One',sans-serif;font-size:14px;line-height:16px}
+.emblem.big{width:84px;height:84px;border-radius:20px;font-size:18px}
+.tier{font-size:11px;font-weight:800;letter-spacing:1.2px}
+.power{font-family:'Lilita One',sans-serif;font-size:22px;line-height:24px}
+.price{padding:8px 12px;border-radius:12px;background:var(--ember);box-shadow:0 4px 0 #B85A00;font-family:'Lilita One',sans-serif;font-size:18px;color:#2B1400;white-space:nowrap}
+.stat{padding:10px 6px;border-radius:14px;background:var(--panel);border:2px solid var(--line);text-align:center}
+.stat b{display:block;font-family:'Lilita One',sans-serif;font-weight:400;font-size:18px;color:var(--ice)}
+.stat span{font-size:11px;font-weight:800;letter-spacing:.4px;color:var(--muted)}
+.tag{display:inline-block;padding:4px 8px;border-radius:8px;background:var(--deep);border:2px solid var(--line);font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--soft)}
+.shots{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.shots img{height:150px;border-radius:12px;border:2px solid var(--line)}
+.bar{height:14px;border-radius:7px;background:var(--deep);border:2px solid var(--line);overflow:hidden}
+.bar div{height:100%;background:var(--gold)}
+.step{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:#16224A;border:2px solid var(--btn2line)}
+.step .n{width:32px;height:32px;flex-shrink:0;border-radius:10px;border:2px solid var(--btn2line);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',sans-serif;font-size:16px;color:var(--soft)}
+.step.done{background:var(--panel);border-color:var(--ice)}.step.done .n{background:var(--ice);border-color:var(--ice);color:var(--deep)}
+.step.now{background:#3A2410;border-color:var(--ember)}.step.now .n{background:var(--ember);border-color:var(--ember);color:#2B1400}
+.step b{display:block;font-size:15px;font-weight:800}.step span{font-size:12px;line-height:16px;color:var(--soft)}
+.chat{display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto}
+.msg{max-width:85%;padding:8px 12px;border-radius:14px;background:var(--btn2);font-size:14px;line-height:19px;white-space:pre-wrap;overflow-wrap:anywhere}
+.msg.me{align-self:flex-end;background:#1F6E8C}
+.msg.crew{border:2px solid var(--gold)}
+.msg small{display:block;font-size:11px;font-weight:800;color:var(--soft)}
+#toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);max-width:420px;width:calc(100% - 32px);padding:12px 14px;border-radius:14px;background:#3A2410;border:2px solid var(--ember);font-weight:800;font-size:14px;z-index:9;display:none}
+#toast.ok{background:#0F3A4A;border-color:var(--ice)}
+</style>
+</head>
+<body>
+<div id="app">
+<svg id="sky" aria-hidden="true" viewBox="0 0 390 150" preserveAspectRatio="xMidYMin slice">
+<defs><linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#101B3A" stop-opacity="0"/><stop offset="1" stop-color="#101B3A"/></linearGradient></defs>
+<rect width="390" height="150" fill="#16275A"/>
+<path d="M0 92L40 40L78 70L130 14L176 64L214 42L262 76L312 26L352 58L390 36L390 150L0 150Z" fill="#22387A"/>
+<path d="M130 14l-14 24 9-4 6 7 7-9 8 6zM312 26l-13 23 8-4 6 7 6-9 8 5zM40 40l-9 17 6-3 4 5 5-6 5 4z" fill="#DCE6FF" opacity=".6"/>
+<circle cx="234" cy="72" r="34" fill="#FF9A2E" opacity=".16"/>
+<path d="M0 100Q60 72 120 92T240 90T390 78L390 150L0 150Z" fill="#1A2C63"/>
+<path d="M222 96l4-40h16l4 40z" fill="#0E1836"/><rect x="229" y="66" width="10" height="12" rx="2" fill="#FF9A2E"/>
+<circle cx="234" cy="46" r="5" fill="#DCE6FF" opacity=".3"/><circle cx="241" cy="33" r="7" fill="#DCE6FF" opacity=".2"/>
+<path d="M16 100l8-24 8 24zM34 104l7-20 7 20zM150 98l8-24 8 24zM170 100l6-18 6 18zM352 90l8-24 8 24zM370 92l6-18 6 18z" fill="#0E1836"/>
+<rect y="60" width="390" height="90" fill="url(#fade)"/>
+<g fill="#fff"><circle cx="22" cy="18" r="2" opacity=".6"/><circle cx="64" cy="8" r="1.5" opacity=".5"/><circle cx="98" cy="30" r="2.5" opacity=".5"/><circle cx="158" cy="10" r="2" opacity=".6"/><circle cx="196" cy="24" r="1.5" opacity=".5"/><circle cx="276" cy="12" r="2" opacity=".6"/><circle cx="338" cy="8" r="1.5" opacity=".5"/><circle cx="372" cy="22" r="2.5" opacity=".5"/></g>
+</svg>
+<header>
+<a class="logo" href="#/"><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="#101B3A"><path d="M12 2l8 3v6c0 5.5-3.5 9-8 11-4.5-2-8-5.5-8-11V5l8-3z"/></svg></i>FrostVault</a>
+<a id="me-btn" class="btn2 icon-btn" href="#/me" aria-label="My account"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="#FFD23F"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.600 8 7z"/></svg></a>
+</header>
+<main id="view" aria-live="polite"><p class="muted">Loading…</p></main>
+<nav aria-label="Main">
+<a href="#/" data-tab="browse"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/></svg>Browse</a>
+<a href="#/sell" data-tab="sell"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg>Sell</a>
+<a href="#/orders" data-tab="orders"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14v14H5zM9 10h6M9 14h6"/></svg>Quests</a>
+<a href="#/shield" data-tab="shield"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"><path d="M12 3l7 3v5c0 5-3 8.5-7 10-4-1.5-7-5-7-10V6l7-3z"/></svg>Shield</a>
+</nav>
+</div>
+<div id="toast" role="status"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
