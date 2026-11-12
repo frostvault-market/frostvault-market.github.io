@@ -16,7 +16,8 @@ const fcLabel = (fc) => fc > 0 ? 'FC' + fc : t('fc_short_low');
 const rankOf = (n) => t(n >= 20 ? 'rank_veteran' : n >= 5 ? 'rank_trusted' : 'rank_rookie');
 const feePct = (price) => price < 10000 ? 5 : price < 20000 ? 3 : 2;
 const CHARMS = ['1-3', '3-5', '5-7', '7-9', '9-11', '11-13', '13-15', '15-17', '17-18'];
-const LOGIN = { google: 'Google Play', gamecenter: 'Game Center', facebook: 'Facebook' };
+const LOGIN = { google: 'Google Play', gamecenter: 'Game Center', facebook: 'Facebook', apple: 'Apple ID' };
+const loginsOf = (l) => ((l && l.login_types && l.login_types.length) ? l.login_types : (l && l.login_type ? [l.login_type] : [])).map((k) => LOGIN[k] || k);
 const status = (s) => t('st_' + s);
 const dname = (n) => n === 'Deleted user' ? t('deleted_user') : (n || '');
 const locale = () => lang === 'ar' ? 'ar-EG-u-nu-latn' : 'en-US';
@@ -119,10 +120,11 @@ async function vListing(id) {
       <div style="min-width:0"><div class="tier" style="color:${tr.c}">${esc(tr.n)}</div><h1>${te('power', { p: l.power_m })}</h1><h2 class="ltr" style="font-size:24px;color:var(--ember);display:inline-block">${money(l.price)}</h2></div>
     </div>
     <div class="grid3 stats">
-      ${stat(l.vip, 's_vip')}${stat(l.state, 's_state')}${stat(LOGIN[l.login_type] || l.login_type, 's_login')}${stat(l.gear_tier, 's_gear')}
+      ${stat(l.vip, 's_vip')}${stat(l.state, 's_state')}
       ${stat(l.charm, 's_charm')}${stat(l.infantry, 's_inf')}${stat(l.lancer, 's_lan')}${stat(l.marksman, 's_mark')}
       ${stat(l.chief_gear, 's_chief')}${stat(l.pet_power, 's_pets')}
     </div>
+    ${loginsOf(l).length ? `<div class="panel"><div class="tier" style="color:var(--ice)">${te('s_login')}</div><div class="chips" style="margin-top:8px">${loginsOf(l).map((n) => `<span class="tag ltr" style="font-size:13px;text-transform:none">${esc(n)}</span>`).join('')}</div></div>` : ''}
     ${textPanel(l.experts, 's_experts')}${textPanel(l.island, 's_island')}
     ${shotsHtml(l)}
     ${l.description ? `<div class="panel"><p style="font-size:14px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;unicode-bidi:plaintext">${esc(l.description)}</p></div>` : ''}
@@ -188,7 +190,7 @@ async function vOrder(id) {
   const payout = money(Number(o.price) - Number(o.seller_fee));
   const steps = [
     [t('s1t'), t('s1d')],
-    [t('s2t'), t('s2d', { login: LOGIN[o.listing?.login_type] || '' })],
+    [t('s2t'), t('s2d', { login: loginsOf(o.listing).join(' / ') })],
     [t('s3t'), t('s3d')],
     [t('s4t'), o.hold_until ? t('s4d_end', { d: new Date(o.hold_until).toLocaleString(locale()) }) : t('s4d')],
     [t('s5t'), t('s5d', { m: payout })]
@@ -258,11 +260,12 @@ function vSell() {
         <label>${te('f_state')}<input name="state" type="number" inputmode="numeric" min="1" max="99999" required placeholder="1412" dir="ltr"></label>
       </div>
       <div class="grid2">
-        <label>${te('f_bound')}<select name="login_type" required><option value="google">Google Play</option><option value="gamecenter">Game Center</option><option value="facebook">Facebook</option></select></label>
+        <fieldset style="grid-column:1/-1;margin:0;padding:0;border:0;display:flex;flex-direction:column;gap:8px"><legend style="padding:0;margin-bottom:8px" class="lg">${te('f_bound')}</legend>
+          <div class="grid2">${Object.entries(LOGIN).map(([k, n]) => `<label class="check opt"><input type="checkbox" name="login_types" value="${k}"><span class="ltr">${n}</span></label>`).join('')}</div>
+          <span class="small" style="color:var(--muted)">${te('f_bound_hint')}</span></fieldset>
         <label style="color:var(--ember)">${te('f_price')}<input name="price" type="number" inputmode="decimal" min="1" max="100000" step="0.01" required placeholder="720" dir="ltr" style="border-color:var(--ember)"></label>
       </div>
       <div class="panel grid2">
-        <label>${te('f_gear')}<select name="gear_tier" required>${choose}<option>T1</option><option>T2</option><option>T3</option><option value="Mix">Mix</option></select></label>
         <label>${te('f_charm')}<select name="charm" required>${choose}${CHARMS.map((c) => `<option>${c}</option>`).join('')}</select></label>
         <label>${te('f_chief')}<select name="chief_gear" required>${choose}${['T0', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'Max'].map((c) => `<option>${c}</option>`).join('')}</select></label>
         <label>${te('f_pets')}<input name="pet_power" maxlength="60" required placeholder="${te('f_pets_ph')}" dir="auto"></label>
@@ -458,6 +461,8 @@ document.addEventListener('submit', async (e) => {
       const body = document.getElementById('chat-in').value.trim(), orderId = location.hash.split('/')[2];
       if (body) { const { error } = await sb.from('messages').insert({ order_id: orderId, body, channel: chatChan }); if (!fail(error)) { f.reset(); loadChat(orderId); } }
     } else if (f.id === 'sell-form') {
+      const logins = fd.getAll('login_types');
+      if (!logins.length) return toast(t('login_required'));
       const prof = fd.get('shot_profile'), gear = fd.get('shot_gear');
       if (!prof?.size || !gear?.size) return toast(t('shots_required'));
       const more = fd.getAll('shots').filter((x) => x && x.size);
@@ -471,7 +476,7 @@ document.addEventListener('submit', async (e) => {
         const { error } = await sb.storage.from('screenshots').upload(path, file, { contentType: file.type || 'image/jpeg' });
         if (fail(error)) return; paths.push(path);
       }
-      const { error } = await sb.from('listings').insert({ fc: +fd.get('fc'), vip: +fd.get('vip'), power_m: +fd.get('power_m'), state: +fd.get('state'), login_type: fd.get('login_type'), price: +fd.get('price'), description: (fd.get('description') || '').trim(), gear_tier: fd.get('gear_tier'), charm: fd.get('charm'), chief_gear: fd.get('chief_gear'), pet_power: (fd.get('pet_power') || '').trim(), experts: (fd.get('experts') || '').trim(), island: (fd.get('island') || '').trim(), profile_shot: paths[0], gear_shot: paths[1], infantry: fd.get('infantry'), lancer: fd.get('lancer'), marksman: fd.get('marksman'), screenshots: paths, attested: true });
+      const { error } = await sb.from('listings').insert({ fc: +fd.get('fc'), vip: +fd.get('vip'), power_m: +fd.get('power_m'), state: +fd.get('state'), login_types: logins, price: +fd.get('price'), description: (fd.get('description') || '').trim(), charm: fd.get('charm'), chief_gear: fd.get('chief_gear'), pet_power: (fd.get('pet_power') || '').trim(), experts: (fd.get('experts') || '').trim(), island: (fd.get('island') || '').trim(), profile_shot: paths[0], gear_shot: paths[1], infantry: fd.get('infantry'), lancer: fd.get('lancer'), marksman: fd.get('marksman'), screenshots: paths, attested: true });
       if (!fail(error)) { toast(t('sent_review'), true); go('#/me'); }
     } else if (f.id === 'settings-form') {
       const patch = { seller_fee_pct: +fd.get('seller_fee_pct'), hold_days: +fd.get('hold_days'), payment_instructions: fd.get('payment_instructions').trim() };

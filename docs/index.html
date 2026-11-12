@@ -98,6 +98,10 @@ label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:800;
 html[lang=ar] label{font-size:13px;letter-spacing:0}
 label.check{flex-direction:row;gap:12px;align-items:flex-start;font-size:12px;line-height:1.45;font-weight:600;letter-spacing:0;color:var(--muted);text-transform:none}
 html[lang=ar] label.check{font-size:13px}
+label.check.opt{align-items:center;min-height:48px;padding:0 12px;border-radius:12px;border:2px solid var(--line);background:var(--deep);color:#fff;font-size:15px;font-weight:800;cursor:pointer}
+label.check.opt:has(input:checked){border-color:var(--ice);background:#16345A}
+.lg{font-size:11px;font-weight:800;letter-spacing:.8px;color:var(--ice);text-transform:uppercase}
+html[lang=ar] .lg{font-size:13px;letter-spacing:0}
 label.check input{width:22px;height:22px;min-height:0;margin:0;flex-shrink:0;accent-color:var(--ice)}
 /* 16px stops iPhone Safari from zooming into a field when it is tapped */
 input,select,textarea{width:100%;min-height:46px;border-radius:12px;border:2px solid var(--line);background:var(--deep);color:#fff;font:800 16px var(--body);padding:8px 12px;-webkit-appearance:none;appearance:none}

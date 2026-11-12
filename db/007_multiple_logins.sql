@@ -1,0 +1,3 @@
+-- Applied 2026-11-12: listings.login_types text[] (google, gamecenter, facebook, apple), at least one for new listings.
+-- Old listings were copied from login_type, which is now optional and no longer written by the app.
+-- The gear tier field was removed from the app (column kept for old listings).
