@@ -8,6 +8,8 @@ const money = (n) => '$' + Number(n || 0).toFixed(2).replace(/\.00$/, '');
 const tierOf = (fc) => fc >= 9 ? { n: 'LEGENDARY', c: '#FFD23F' } : fc >= 5 ? { n: 'EPIC', c: '#C9A4FF' } : fc >= 1 ? { n: 'RARE', c: '#7FC4FF' } : { n: 'COMMON', c: '#B9C6EA' };
 const fcLabel = (fc) => fc > 0 ? 'FC' + fc : 'Lv 30';
 const rankOf = (t) => t >= 20 ? 'Veteran trader' : t >= 5 ? 'Trusted trader' : 'Rookie trader';
+const feePct = (price) => price < 10000 ? 5 : price < 20000 ? 3 : 2;
+const CHARMS = ['1-3', '3-5', '5-7', '7-9', '9-11', '11-13', '13-15', '15-17', '17-18'];
 const LOGIN = { google: 'Google Play', gamecenter: 'Game Center', facebook: 'Facebook' };
 const STATUS = { awaiting_payment: 'Waiting for payment', paid: 'Payment locked', seller_unbound: 'Seller unbound', hold: 'Hold period', completed: 'Completed', disputed: 'In dispute', cancelled: 'Cancelled', refunded: 'Refunded', pending: 'In review', active: 'Live', reserved: 'Reserved', sold: 'Sold', rejected: 'Rejected', removed: 'Removed' };
 const FLAME = '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="#1A1430"><path d="M12 2c1 4 6 5.5 6 11a6 6 0 01-12 0c0-2.5 1-4 2.5-5.5 0 2 .8 3 2 3.5C10.5 8 10 5 12 2z"/></svg>';
@@ -33,7 +35,7 @@ function listingCard(l) {
       <div style="flex:1;min-width:0">
         <div class="tier" style="color:${t.c}">${t.n}</div>
         <div class="power">${esc(l.power_m)}M Power</div>
-        <div class="small" style="color:var(--soft);font-weight:700">VIP ${esc(l.vip)} · State ${esc(l.state)}</div>
+        <div class="small" style="color:var(--soft);font-weight:700">VIP ${esc(l.vip)} · State ${esc(l.state)}${l.infantry ? ' · Troops ' + esc(l.infantry) : ''}</div>
       </div>
       <div class="price">${money(l.price)}</div>
     </div>
@@ -67,7 +69,9 @@ async function vListing(id) {
   if (fail(error) || !l) return `${backBtn('#/')}<p class="muted">This listing is not available.</p>`;
   const t = tierOf(l.fc), mine = uid() === l.seller_id, admin = !!profile?.is_admin;
   let cta = '';
-  if (admin && l.status === 'pending') cta = `<div class="grid2"><button class="btn" data-act="review" data-id="${esc(l.id)}" data-v="active">APPROVE</button><button class="btn2" style="min-height:54px" data-act="review" data-id="${esc(l.id)}" data-v="rejected">Reject</button></div>`;
+  if (admin && l.status === 'pending') cta = `<div class="grid2"><button class="btn" data-act="review" data-id="${esc(l.id)}" data-v="active">APPROVE</button><button class="btn2" style="min-height:54px" data-act="review" data-id="${esc(l.id)}" data-v="rejected">Reject</button></div><button class="btn2" data-act="adminremove" data-id="${esc(l.id)}">Delete this listing (crew)</button>`;
+  else if (admin && ['active', 'rejected'].includes(l.status)) cta = `<button class="btn2" data-act="adminremove" data-id="${esc(l.id)}">Delete this listing (crew)</button>${l.status === 'active' && !mine ? `<a class="btn" href="#/checkout/${esc(l.id)}">CLAIM THIS ACCOUNT</a>` : ''}`;
+  else if (admin && l.status === 'reserved') cta = '<p class="muted">This listing has an open order. Cancel or refund the order first, then you can delete it.</p>';
   else if (mine && ['pending', 'active', 'rejected'].includes(l.status)) cta = `<button class="btn2" data-act="remove" data-id="${esc(l.id)}">Remove my listing</button>`;
   else if (l.status === 'active' && !mine) cta = uid() ? `<a class="btn" href="#/checkout/${esc(l.id)}">CLAIM THIS ACCOUNT</a>` : `<a class="btn" href="#/auth">SIGN IN TO CLAIM</a>`;
   return `<div class="row between">${backBtn('#/')}<span class="tag">${esc(STATUS[l.status] || l.status)}</span></div>
@@ -79,7 +83,13 @@ async function vListing(id) {
       <div class="stat"><b>${esc(l.vip)}</b><span>VIP</span></div>
       <div class="stat"><b>${esc(l.state)}</b><span>STATE</span></div>
       <div class="stat"><b>${esc(LOGIN[l.login_type] || l.login_type)}</b><span>LOGIN</span></div>
+      <div class="stat"><b>${esc(l.gear_tier || '-')}</b><span>GEAR</span></div>
+      <div class="stat"><b>${esc(l.charm || '-')}</b><span>CHARM</span></div>
+      <div class="stat"><b>${esc(l.infantry || '-')}</b><span>INFANTRY</span></div>
+      <div class="stat"><b>${esc(l.lancer || '-')}</b><span>LANCERS</span></div>
+      <div class="stat"><b>${esc(l.marksman || '-')}</b><span>MARKSMEN</span></div>
     </div>
+    ${l.chief_gear ? `<div class="panel"><div class="tier" style="color:var(--ice)">CHIEF GEAR</div><p style="font-size:15px;line-height:21px;font-weight:700;overflow-wrap:anywhere">${esc(l.chief_gear)}</p></div>` : ''}
     <div class="shots">${(l.screenshots || []).map((p) => `<a href="${esc(shotUrl(p))}" target="_blank" rel="noopener"><img src="${esc(shotUrl(p))}" alt="In-game screenshot" loading="lazy"></a>`).join('')}</div>
     ${l.description ? `<div class="panel"><p style="font-size:14px;line-height:20px;white-space:pre-wrap;overflow-wrap:anywhere">${esc(l.description)}</p></div>` : ''}
     <div class="panel row"><div style="flex:1"><h2 style="font-size:17px">${esc(l.seller?.display_name || 'Seller')}</h2><p class="small" style="color:var(--muted);font-weight:700">${esc(rankOf(l.seller?.trades || 0))} · ${esc(l.seller?.trades || 0)} completed trades</p></div></div>
@@ -91,12 +101,12 @@ async function vCheckout(id) {
   if (!uid()) return needLogin('Claim this account');
   const { data: l, error } = await sb.from('listings').select('*').eq('id', id).maybeSingle();
   if (fail(error) || !l || l.status !== 'active') return `${backBtn('#/')}<p class="muted">This account is no longer available.</p>`;
-  const fee = Math.round(l.price * settings.buyer_fee_pct) / 100, t = tierOf(l.fc);
+  const pct = feePct(Number(l.price)), fee = Math.round(l.price * pct) / 100, t = tierOf(l.fc);
   return `<div class="row">${backBtn('#/listing/' + esc(l.id))}<h1 style="font-size:24px">Lock it in the vault</h1></div>
     <div class="panel ice col">
       <div><div class="tier" style="color:${t.c}">${t.n} · ${esc(fcLabel(l.fc))}</div><h2 style="font-size:20px">${esc(l.power_m)}M Power account</h2></div>
       <div class="row between" style="font-size:14px;font-weight:700"><span style="color:var(--muted)">Account price</span><span>${money(l.price)}</span></div>
-      <div class="row between" style="font-size:14px;font-weight:700"><span style="color:var(--muted)">Shield fee (${esc(settings.buyer_fee_pct)}%)</span><span>${money(fee)}</span></div>
+      <div class="row between" style="font-size:14px;font-weight:700"><span style="color:var(--muted)">Shield fee (${pct}%)</span><span>${money(fee)}</span></div>
       <div style="height:2px;background:var(--line)"></div>
       <div class="row between"><b style="font-size:14px">Goes into the vault</b><h2 style="font-size:22px;color:var(--ember)">${money(Number(l.price) + fee)}</h2></div>
     </div>
@@ -191,7 +201,15 @@ function vSell() {
         <label>Bound to<select name="login_type" required><option value="google">Google Play</option><option value="gamecenter">Game Center</option><option value="facebook">Facebook</option></select></label>
         <label style="color:var(--ember)">Your price (USD)<input name="price" type="number" inputmode="decimal" min="1" max="100000" step="0.01" required placeholder="720" style="border-color:var(--ember)"></label>
       </div>
-      <p class="small" style="color:var(--muted)">Seller fee is ${esc(settings.seller_fee_pct)}%. Buyers pay a ${esc(settings.buyer_fee_pct)}% shield fee on top of your price.</p>
+      <div class="panel grid2">
+        <label>Gear tier<select name="gear_tier" required><option value="">Choose</option><option>T1</option><option>T2</option><option>T3</option><option>Mix</option></select></label>
+        <label>Charm level<select name="charm" required><option value="">Choose</option>${CHARMS.map((c) => `<option>${c}</option>`).join('')}</select></label>
+        <label style="grid-column:1/-1">Chief gear<input name="chief_gear" maxlength="60" required placeholder="Type the chief gear, e.g. Mythic T2"></label>
+      </div>
+      <div class="panel grid3">
+        ${[['infantry', 'Infantry'], ['lancer', 'Lancers'], ['marksman', 'Marksmen']].map(([n, t]) => `<label>${t}<select name="${n}" required><option value="">Choose</option><option>T12</option><option>T11</option><option>T10</option></select></label>`).join('')}
+      </div>
+      <p class="small" style="color:var(--muted)">Buyers pay a shield fee on top of your price: 5% under $10,000, 3% from $10,000 to $19,999, 2% from $20,000.${Number(settings.seller_fee_pct) ? ` Seller fee is ${esc(settings.seller_fee_pct)}%.` : ''}</p>
       <label>Extra details (optional)<textarea name="description" maxlength="1000" placeholder="Heroes, chief gear, pets, state age"></textarea></label>
       <label>In-game screenshots (1 to 6, max 3 MB each)<input name="shots" type="file" accept="image/jpeg,image/png,image/webp" multiple required></label>
       <label class="check"><input name="attested" type="checkbox" required>This account is mine, it was not hacked, and I will not try to recover it after the sale.</label>
@@ -213,7 +231,7 @@ let authMode = 'in';
 function vAuth() {
   if (uid()) { setTimeout(() => go('#/me'), 0); return ''; }
   const up = authMode === 'up';
-  return `<h1>${up ? 'Join the vault' : 'Welcome back, Chief'}</h1>
+  return `<img class="hero-logo" src="logo.webp" alt="FrostVault" width="150" height="150"><h1 style="text-align:center">${up ? 'Join the vault' : 'Welcome back, Chief'}</h1>
     <form id="auth-form" class="panel col">
       ${up ? '<label>Trader name<input name="name" required minlength="2" maxlength="24" autocomplete="nickname"></label>' : ''}
       <label>Email<input name="email" type="email" required autocomplete="email"></label>
@@ -244,8 +262,8 @@ async function vAdmin() {
     <h2>Open orders (${ords.data?.length || 0})</h2>${(ords.data || []).map(orderRow).join('') || '<p class="muted">No open orders.</p>'}
     <h2>Settings</h2>
     <form id="settings-form" class="panel col">
-      <div class="grid3">
-        <label>Buyer fee %<input name="buyer_fee_pct" type="number" min="0" max="50" step="0.01" required value="${esc(s.buyer_fee_pct)}"></label>
+      <p class="small" style="color:var(--muted)">Buyer shield fee is fixed by price: 5% under $10,000, 3% from $10,000 to $19,999, 2% from $20,000.</p>
+      <div class="grid2">
         <label>Seller fee %<input name="seller_fee_pct" type="number" min="0" max="50" step="0.01" required value="${esc(s.seller_fee_pct)}"></label>
         <label>Hold days<input name="hold_days" type="number" min="0" max="30" required value="${esc(s.hold_days)}"></label>
       </div>
@@ -288,6 +306,13 @@ const actions = {
   review: async (el) => {
     const { error } = await sb.from('listings').update({ status: el.dataset.v }).eq('id', el.dataset.id);
     if (!fail(error)) { toast(el.dataset.v === 'active' ? 'Listing is live.' : 'Listing rejected.', true); go('#/admin'); }
+  },
+  adminremove: async (el) => {
+    if (!window.confirm('Delete this listing from the market? Buyers will no longer see it.')) return;
+    const { data, error } = await sb.from('listings').update({ status: 'removed' }).eq('id', el.dataset.id).in('status', ['pending', 'active', 'rejected']).select('id');
+    if (fail(error)) return;
+    if (!data?.length) return toast('Could not delete. It may have an open order.');
+    toast('Listing deleted.', true); go('#/admin');
   },
   remove: async (el) => {
     if (!window.confirm('Remove this listing?')) return;
@@ -333,10 +358,10 @@ document.addEventListener('submit', async (e) => {
         const { error } = await sb.storage.from('screenshots').upload(path, file, { contentType: file.type });
         if (fail(error)) return; paths.push(path);
       }
-      const { error } = await sb.from('listings').insert({ fc: +fd.get('fc'), vip: +fd.get('vip'), power_m: +fd.get('power_m'), state: +fd.get('state'), login_type: fd.get('login_type'), price: +fd.get('price'), description: (fd.get('description') || '').trim(), screenshots: paths, attested: true });
+      const { error } = await sb.from('listings').insert({ fc: +fd.get('fc'), vip: +fd.get('vip'), power_m: +fd.get('power_m'), state: +fd.get('state'), login_type: fd.get('login_type'), price: +fd.get('price'), description: (fd.get('description') || '').trim(), gear_tier: fd.get('gear_tier'), charm: fd.get('charm'), chief_gear: (fd.get('chief_gear') || '').trim(), infantry: fd.get('infantry'), lancer: fd.get('lancer'), marksman: fd.get('marksman'), screenshots: paths, attested: true });
       if (!fail(error)) { toast('Sent for review. You will see it under your account.', true); go('#/me'); }
     } else if (f.id === 'settings-form') {
-      const patch = { buyer_fee_pct: +fd.get('buyer_fee_pct'), seller_fee_pct: +fd.get('seller_fee_pct'), hold_days: +fd.get('hold_days'), payment_instructions: fd.get('payment_instructions').trim() };
+      const patch = { seller_fee_pct: +fd.get('seller_fee_pct'), hold_days: +fd.get('hold_days'), payment_instructions: fd.get('payment_instructions').trim() };
       const { error } = await sb.from('settings').update(patch).eq('id', 1);
       if (!fail(error)) { Object.assign(settings, patch); toast('Settings saved.', true); }
     }
@@ -349,6 +374,7 @@ async function loadProfile() {
   if (uid()) { const { data } = await sb.from('profiles').select('*').eq('id', uid()).maybeSingle(); profile = data; }
   document.getElementById('me-btn').setAttribute('href', uid() ? '#/me' : '#/auth');
 }
+setTimeout(() => document.getElementById('splash')?.remove(), 2800);
 async function boot() {
   const c = window.FV_CONFIG || {};
   if (!window.supabase || !/^https:\/\//.test(c.SUPABASE_URL || '') || !c.SUPABASE_KEY || c.SUPABASE_KEY.startsWith('PASTE')) {

@@ -6,10 +6,16 @@
 <meta name="theme-color" content="#101B3A">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="FrostVault">
-<title>FrostVault</title>
+<title>FrostVault | Whiteout Survival Accounts</title>
+<meta name="description" content="FrostVault: buy and sell Whiteout Survival accounts with a middleman holding the payment. Independent service.">
+<meta property="og:title" content="FrostVault | Whiteout Survival Accounts">
+<meta property="og:description" content="Buy and sell Whiteout Survival accounts. Every deal locked in the vault.">
+<meta property="og:image" content="https://mazenreno96.github.io/frostvault/share.jpg">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800&display=swap">
 <style>
@@ -21,7 +27,15 @@ html,body{margin:0;background:var(--deep);color:#fff;font-family:Nunito,system-u
 header,main,nav{position:relative;z-index:1}
 header{display:flex;justify-content:space-between;align-items:center;padding:calc(16px + env(safe-area-inset-top)) 16px 6px}
 .logo{display:flex;align-items:center;gap:8px;color:#fff;text-decoration:none;font-family:'Lilita One',sans-serif;font-size:26px;letter-spacing:.5px}
-.logo i{width:40px;height:40px;border-radius:12px;background:var(--ice);box-shadow:0 4px 0 #2A8FB0;display:flex;align-items:center;justify-content:center}
+.logo img{width:46px;height:46px;display:block}
+#splash{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;animation:splashOut .6s ease-in 2s forwards}
+#splash img{width:min(62vw,260px);height:auto;animation:logoIn .7s cubic-bezier(.2,1.4,.4,1) both,logoOut .6s ease-in 2s forwards}
+#splash p{font-family:'Lilita One',sans-serif;font-size:15px;letter-spacing:2px;color:var(--ice);animation:logoIn .7s .25s both}
+@keyframes logoIn{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+@keyframes logoOut{to{transform:scale(1.9);opacity:0}}
+@keyframes splashOut{to{opacity:0;visibility:hidden}}
+@media (prefers-reduced-motion:reduce){#splash,#splash img,#splash p{animation-duration:.01s}}
+.hero-logo{width:150px;height:150px;align-self:center}
 main{flex:1;padding:10px 16px 20px;display:flex;flex-direction:column;gap:12px}
 nav{position:sticky;bottom:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:var(--deep);border-top:2px solid var(--line)}
 nav a{min-height:56px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:800;color:var(--muted);text-decoration:none}
@@ -84,6 +98,7 @@ input:focus,select:focus,textarea:focus,button:focus-visible,a:focus-visible{out
 </style>
 </head>
 <body>
+<div id="splash" aria-hidden="true"><img src="logo.webp" alt="" width="260" height="260"><p>TRADE SAFE</p></div>
 <div id="app">
 <svg id="sky" aria-hidden="true" viewBox="0 0 390 150" preserveAspectRatio="xMidYMin slice">
 <defs><linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#101B3A" stop-opacity="0"/><stop offset="1" stop-color="#101B3A"/></linearGradient></defs>
@@ -99,7 +114,7 @@ input:focus,select:focus,textarea:focus,button:focus-visible,a:focus-visible{out
 <g fill="#fff"><circle cx="22" cy="18" r="2" opacity=".6"/><circle cx="64" cy="8" r="1.5" opacity=".5"/><circle cx="98" cy="30" r="2.5" opacity=".5"/><circle cx="158" cy="10" r="2" opacity=".6"/><circle cx="196" cy="24" r="1.5" opacity=".5"/><circle cx="276" cy="12" r="2" opacity=".6"/><circle cx="338" cy="8" r="1.5" opacity=".5"/><circle cx="372" cy="22" r="2.5" opacity=".5"/></g>
 </svg>
 <header>
-<a class="logo" href="#/"><i><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="#101B3A"><path d="M12 2l8 3v6c0 5.5-3.5 9-8 11-4.5-2-8-5.5-8-11V5l8-3z"/></svg></i>FrostVault</a>
+<a class="logo" href="#/"><img src="logo-96.png" alt="" width="46" height="46">FrostVault</a>
 <a id="me-btn" class="btn2 icon-btn" href="#/me" aria-label="My account"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="#FFD23F"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.600 8 7z"/></svg></a>
 </header>
 <main id="view" aria-live="polite"><p class="muted">Loading…</p></main>
