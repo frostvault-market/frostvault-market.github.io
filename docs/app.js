@@ -23,6 +23,9 @@ function toast(msg, ok) {
 }
 const fail = (error) => { if (error) { toast(error.message || 'Something went wrong'); return true; } return false; };
 const uid = () => session?.user?.id || null;
+const isAdmin = () => !!profile?.is_admin;
+const isStaff = () => !!(profile?.is_admin || profile?.is_mod);
+let chatRoles = {};
 const shotUrl = (path) => sb.storage.from('screenshots').getPublicUrl(path).data.publicUrl;
 const go = (hash) => { if (location.hash === hash) route(); else location.hash = hash; };
 
@@ -67,7 +70,7 @@ async function vBrowse() {
 async function vListing(id) {
   const { data: l, error } = await sb.from('listings').select('*, seller:profiles!listings_seller_id_fkey(display_name,trades)').eq('id', id).maybeSingle();
   if (fail(error) || !l) return `${backBtn('#/')}<p class="muted">This listing is not available.</p>`;
-  const t = tierOf(l.fc), mine = uid() === l.seller_id, admin = !!profile?.is_admin;
+  const t = tierOf(l.fc), mine = uid() === l.seller_id, admin = isStaff();
   let cta = '';
   if (admin && l.status === 'pending') cta = `<div class="grid2"><button class="btn" data-act="review" data-id="${esc(l.id)}" data-v="active">APPROVE</button><button class="btn2" style="min-height:54px" data-act="review" data-id="${esc(l.id)}" data-v="rejected">Reject</button></div><button class="btn2" data-act="adminremove" data-id="${esc(l.id)}">Delete this listing (crew)</button>`;
   else if (admin && ['active', 'rejected'].includes(l.status)) cta = `<button class="btn2" data-act="adminremove" data-id="${esc(l.id)}">Delete this listing (crew)</button>${l.status === 'active' && !mine ? `<a class="btn" href="#/checkout/${esc(l.id)}">CLAIM THIS ACCOUNT</a>` : ''}`;
@@ -135,7 +138,8 @@ async function vOrder(id) {
   if (!uid()) return needLogin('Handover quest');
   const { data: o, error } = await sb.from('orders').select('*, listing:listings(*), buyer:profiles!orders_buyer_id_fkey(display_name), seller:profiles!orders_seller_id_fkey(display_name)').eq('id', id).maybeSingle();
   if (fail(error) || !o) return `${backBtn('#/orders')}<p class="muted">Order not found.</p>`;
-  const admin = !!profile?.is_admin, buyer = o.buyer_id === uid(), seller = o.seller_id === uid();
+  const admin = isAdmin(), staff = isStaff(), buyer = o.buyer_id === uid(), seller = o.seller_id === uid();
+  chatRoles = { [o.buyer_id]: 'Buyer', [o.seller_id]: 'Seller' };
   const idx = { awaiting_payment: 0, paid: 1, seller_unbound: 2, hold: 3, completed: 5 }[o.status];
   const closed = ['cancelled', 'refunded'].includes(o.status), disputed = o.status === 'disputed';
   const total = Number(o.price) + Number(o.buyer_fee), ref = 'FV-' + o.id.slice(0, 8).toUpperCase();
@@ -162,21 +166,22 @@ async function vOrder(id) {
   if ((buyer || seller) && ['paid', 'seller_unbound', 'hold'].includes(o.status)) actions += act('dispute', 'Open dispute');
   const title = closed ? STATUS[o.status] : disputed ? 'In dispute' : o.status === 'completed' ? 'Quest complete' : 'Handover quest';
   setTimeout(() => loadChat(o.id), 0);
-  return `<div class="row">${backBtn(admin && !buyer && !seller ? '#/admin' : '#/orders')}<div><p class="small" style="color:var(--muted);font-weight:700">Order ${esc(ref)} · ${esc(o.buyer?.display_name)} buys from ${esc(o.seller?.display_name)}</p><h1>${esc(title)}</h1></div></div>
+  return `<div class="row">${backBtn(staff && !buyer && !seller ? '#/admin' : '#/orders')}<div><p class="small" style="color:var(--muted);font-weight:700">Order ${esc(ref)} · ${esc(o.buyer?.display_name)} buys from ${esc(o.seller?.display_name)}</p><h1>${esc(title)}</h1></div></div>
     <div class="panel ice col"><div class="row between"><h2 style="font-size:20px">${money(total)} ${o.status === 'completed' ? 'paid out' : closed ? 'closed' : idx >= 1 || disputed ? 'in the vault' : 'to pay'}</h2><b style="color:var(--gold);font-size:13px">${done} / 5</b></div>
       <div class="bar" role="img" aria-label="Progress ${done} of 5"><div style="width:${done * 20}%"></div></div></div>
     ${disputed ? '<div class="panel warn"><p style="font-size:14px;font-weight:700">A dispute is open. The crew is reviewing. Keep everything in this chat.</p></div>' : ''}
     ${closed ? '' : `<div class="col" style="gap:8px">${stepHtml}</div>`}
     <div class="col">${actions}</div>
+    ${staff && !admin && !buyer && !seller ? '<p class="muted">You are helping on this order. Payment steps are done by the main admin.</p>' : ''}
     <div class="panel col"><h2>Chat with the crew</h2><p class="small" style="color:var(--muted)">Crew messages have a gold border. The crew never asks for your payment password.</p>
       <div id="chat" class="chat"><p class="muted">Loading chat…</p></div>
       <form id="chat-form" class="row"><input id="chat-in" aria-label="Message" maxlength="2000" placeholder="Write a message" autocomplete="off"><button class="btn2" style="width:auto">Send</button></form></div>`;
 }
 async function loadChat(orderId) {
   const box = document.getElementById('chat'); if (!box) return;
-  const { data, error } = await sb.from('messages').select('*, sender:profiles!messages_sender_id_fkey(display_name,is_admin)').eq('order_id', orderId).order('id');
+  const { data, error } = await sb.from('messages').select('*, sender:profiles!messages_sender_id_fkey(display_name,is_admin,is_mod)').eq('order_id', orderId).order('id');
   if (error) { box.innerHTML = '<p class="muted">Could not load chat.</p>'; return; }
-  box.innerHTML = data.map((m) => `<div class="msg ${m.sender_id === uid() ? 'me' : ''} ${m.sender?.is_admin ? 'crew' : ''}"><small>${esc(m.sender?.is_admin ? 'Crew · ' : '')}${esc(m.sender?.display_name || '')}</small>${esc(m.body)}</div>`).join('') || '<p class="muted">No messages yet.</p>';
+  box.innerHTML = data.map((m) => `<div class="msg ${m.sender_id === uid() ? 'me' : ''} ${m.sender?.is_admin || m.sender?.is_mod ? 'crew' : ''}"><small>${esc(m.sender?.display_name || '')} · ${esc(chatRoles[m.sender_id] || (m.sender?.is_admin || m.sender?.is_mod ? 'Crew' : 'Member'))}</small>${esc(m.body)}</div>`).join('') || '<p class="muted">No messages yet.</p>';
   box.scrollTop = box.scrollHeight;
   if (!channel) {
     channel = sb.channel('order-' + orderId)
@@ -245,18 +250,25 @@ async function vMe() {
   if (!uid()) { setTimeout(() => go('#/auth'), 0); return ''; }
   const { data } = await sb.from('listings').select('*, seller:profiles!listings_seller_id_fkey(display_name,trades)').eq('seller_id', uid()).neq('status', 'removed').order('created_at', { ascending: false });
   return `<h1>${esc(profile?.display_name || 'Chief')}</h1><p class="muted">${esc(rankOf(profile?.trades || 0))} · ${esc(profile?.trades || 0)} completed trades · ${esc(session.user.email)}</p>
-    ${profile?.is_admin ? '<a class="btn" href="#/admin">CREW PANEL</a>' : ''}
+    ${isStaff() ? '<a class="btn" href="#/admin">CREW PANEL</a>' : ''}
     <h2>My listings</h2><div class="col" style="gap:12px">${(data || []).map(listingCard).join('') || '<p class="muted">Nothing listed yet.</p>'}</div>
     <button class="btn2" data-act="signout">Sign out</button>`;
 }
 
 async function vAdmin() {
-  if (!profile?.is_admin) return '<h1>Crew only</h1><p class="muted">This area is for the FrostVault crew.</p>';
-  const [pend, ords] = await Promise.all([
+  if (!isStaff()) return '<h1>Crew only</h1><p class="muted">This area is for the FrostVault crew.</p>';
+  const [pend, ords, usersRes] = await Promise.all([
     sb.from('listings').select('*, seller:profiles!listings_seller_id_fkey(display_name,trades)').eq('status', 'pending').order('created_at'),
-    sb.from('orders').select('*, listing:listings(fc,power_m)').in('status', ['awaiting_payment', 'paid', 'seller_unbound', 'hold', 'disputed']).order('updated_at')
+    sb.from('orders').select('*, listing:listings(fc,power_m)').in('status', ['awaiting_payment', 'paid', 'seller_unbound', 'hold', 'disputed']).order('updated_at'),
+    isAdmin() ? sb.rpc('admin_list_users') : Promise.resolve({ data: [] })
   ]);
-  const s = settings;
+  const s = settings, users = Array.isArray(usersRes.data) ? usersRes.data : [];
+  const userRow = (u) => `<div class="panel col" style="gap:8px"><div class="row between"><div style="min-width:0"><h2 style="font-size:17px;overflow-wrap:anywhere">${esc(u.display_name)}</h2><p class="small" style="color:var(--muted);font-weight:700;overflow-wrap:anywhere">${esc(u.email)}</p></div><span class="tag" style="flex-shrink:0;${u.is_admin ? 'border-color:var(--gold);color:var(--gold)' : u.is_mod ? 'border-color:var(--ice);color:var(--ice)' : ''}">${u.is_admin ? 'Admin' : u.is_mod ? 'Helper' : 'Member'}</span></div>
+    <p class="small" style="color:var(--muted)">${esc(u.trades)} completed trades · joined ${esc(new Date(u.created_at).toLocaleDateString())}</p>
+    ${u.is_admin ? '' : `<button class="btn2" data-act="helper" data-id="${esc(u.id)}" data-v="${u.is_mod ? 'off' : 'on'}">${u.is_mod ? 'Remove helper rights' : 'Make crew helper'}</button>`}</div>`;
+  if (!isAdmin()) return `<h1>Crew panel</h1><p class="muted">You are a crew helper: you can review listings and help in order chats. Payments, settings and accounts are handled by the main admin.</p>
+    <h2>Listings to review (${pend.data?.length || 0})</h2><div class="col" style="gap:12px">${(pend.data || []).map(listingCard).join('') || '<p class="muted">Nothing waiting.</p>'}</div>
+    <h2>Open orders (${ords.data?.length || 0})</h2>${(ords.data || []).map(orderRow).join('') || '<p class="muted">No open orders.</p>'}`;
   return `<h1>Crew panel</h1>
     <h2>Listings to review (${pend.data?.length || 0})</h2><div class="col" style="gap:12px">${(pend.data || []).map(listingCard).join('') || '<p class="muted">Nothing waiting.</p>'}</div>
     <h2>Open orders (${ords.data?.length || 0})</h2>${(ords.data || []).map(orderRow).join('') || '<p class="muted">No open orders.</p>'}
@@ -269,7 +281,10 @@ async function vAdmin() {
       </div>
       <label>Payment instructions shown to buyers<textarea name="payment_instructions" maxlength="2000" placeholder="How buyers should pay you">${esc(s.payment_instructions)}</textarea></label>
       <button class="btn2">Save settings</button>
-    </form>`;
+    </form>
+    <h2>Accounts (${users.length})</h2>
+    <p class="small" style="color:var(--muted)">Helpers can approve, reject and delete listings and reply in order chats. They cannot confirm payments, release or refund money, change settings or manage accounts.</p>
+    <div class="col" style="gap:12px">${users.map(userRow).join('') || '<p class="muted">No accounts yet.</p>'}</div>`;
 }
 
 /* ---------- router ---------- */
@@ -307,6 +322,12 @@ const actions = {
     const { error } = await sb.from('listings').update({ status: el.dataset.v }).eq('id', el.dataset.id);
     if (!fail(error)) { toast(el.dataset.v === 'active' ? 'Listing is live.' : 'Listing rejected.', true); go('#/admin'); }
   },
+  helper: async (el) => {
+    const on = el.dataset.v === 'on';
+    if (!window.confirm(on ? 'Give this account crew helper rights?' : 'Remove helper rights from this account?')) return;
+    const { error } = await sb.rpc('admin_set_helper', { p_user: el.dataset.id, p_on: on });
+    if (!fail(error)) { toast(on ? 'Helper added.' : 'Helper removed.', true); route(); }
+  },
   adminremove: async (el) => {
     if (!window.confirm('Delete this listing from the market? Buyers will no longer see it.')) return;
     const { data, error } = await sb.from('listings').update({ status: 'removed' }).eq('id', el.dataset.id).in('status', ['pending', 'active', 'rejected']).select('id');
@@ -339,7 +360,8 @@ document.addEventListener('submit', async (e) => {
       const email = fd.get('email').trim(), password = fd.get('password');
       if (authMode === 'up') {
         const { data, error } = await sb.auth.signUp({ email, password, options: { data: { display_name: fd.get('name').trim() }, emailRedirectTo: location.origin + location.pathname } });
-        if (!fail(error)) { if (data.session) go('#/'); else toast('Check your email to confirm your account, then sign in.', true); }
+        if (error && (error.status === 429 || /rate limit/i.test(error.message || ''))) toast('Too many sign-ups right now. Please try again in a little while.');
+        else if (!fail(error)) { if (data.session) go('#/'); else toast('Check your email to confirm your account, then sign in.', true); }
       } else {
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (!fail(error)) go('#/');

@@ -1,0 +1,4 @@
+-- Applied 2026-11-12: crew helpers (profiles.is_mod), is_staff(), admin_list_users(), admin_set_helper().
+-- Helpers can review listings and read/reply in order chats. Money steps, settings and accounts stay admin-only.
+-- Listing updates are limited to the status column, between review states only.
+-- Full SQL is in the Supabase migration history under "crew_helpers_and_user_list".
