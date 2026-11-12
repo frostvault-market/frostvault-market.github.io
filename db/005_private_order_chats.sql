@@ -1,0 +1,4 @@
+-- Applied 2026-11-12: three chats per order.
+-- messages.channel: 'group' (buyer, seller, crew), 'seller' (seller + crew), 'buyer' (buyer + crew).
+-- public.can_use_chat(order, channel) decides read and write; crew = admin and helpers (is_staff()).
+-- Existing messages became 'group'.

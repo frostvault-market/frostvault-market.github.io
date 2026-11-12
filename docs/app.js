@@ -24,7 +24,7 @@ const FLAME = '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24
 
 let sb = null, session = null, profile = null, channel = null, browseFilter = 'ALL', browseQuery = '', userQuery = '';
 let settings = { buyer_fee_pct: 0, seller_fee_pct: 0, hold_days: 3, payment_instructions: '' };
-let chatRoles = {};
+let chatRoles = {}, chatChan = 'group', chatOrder = null, chatChans = ['group'];
 
 function toast(msg, ok) {
   toastEl.textContent = msg; toastEl.className = ok ? 'ok' : ''; toastEl.style.display = 'block';
@@ -170,6 +170,8 @@ async function vOrder(id) {
   if (fail(error) || !o) return `${backBtn('#/orders')}<p class="muted">${te('order_nf')}</p>`;
   const admin = isAdmin(), staff = isStaff(), buyer = o.buyer_id === uid(), seller = o.seller_id === uid();
   chatRoles = { [o.buyer_id]: 'role_buyer', [o.seller_id]: 'role_seller' };
+  chatChans = staff ? ['group', 'seller', 'buyer'] : seller ? ['group', 'seller'] : buyer ? ['group', 'buyer'] : ['group'];
+  if (chatOrder !== o.id || !chatChans.includes(chatChan)) { chatOrder = o.id; chatChan = 'group'; }
   const idx = { awaiting_payment: 0, paid: 1, seller_unbound: 2, hold: 3, completed: 5 }[o.status];
   const closed = ['cancelled', 'refunded'].includes(o.status), disputed = o.status === 'disputed';
   const total = Number(o.price) + Number(o.buyer_fee), ref = 'FV-' + o.id.slice(0, 8).toUpperCase();
@@ -205,13 +207,17 @@ async function vOrder(id) {
     ${closed ? '' : `<div class="col" style="gap:8px">${stepHtml}</div>`}
     <div class="col">${actions}</div>
     ${staff && !admin && !buyer && !seller ? `<p class="muted">${te('helper_note')}</p>` : ''}
-    <div class="panel col"><h2>${te('chat_title')}</h2><p class="small" style="color:var(--muted)">${te('chat_note')}</p>
+    <div class="panel col"><h2>${te('chat_title')}</h2>
+      <div class="chips" role="tablist">${chatChans.map((c) => `<button class="chip ${c === chatChan ? 'on' : ''}" role="tab" aria-selected="${c === chatChan}" data-act="chatchan" data-v="${c}" id="chan-${c}">${te(chanLabel(c, staff))}</button>`).join('')}</div>
+      <p id="chat-note" class="small" style="color:var(--muted)">${te(chanNote(chatChan, staff))}</p>
       <div id="chat" class="chat"><p class="muted">${te('chat_loading')}</p></div>
       <form id="chat-form" class="row"><input id="chat-in" aria-label="${te('chat_label')}" maxlength="2000" placeholder="${te('chat_ph')}" autocomplete="off" dir="auto"><button class="btn2" style="width:auto;flex-shrink:0">${te('send')}</button></form></div>`;
 }
+const chanLabel = (c, staff) => c === 'group' ? 'chan_group' : staff ? (c === 'seller' ? 'chan_seller' : 'chan_buyer') : 'chan_private';
+const chanNote = (c, staff) => c === 'group' ? 'chat_note' : staff ? (c === 'seller' ? 'note_seller_staff' : 'note_buyer_staff') : (c === 'seller' ? 'note_seller_private' : 'note_buyer_private');
 async function loadChat(orderId) {
   const box = document.getElementById('chat'); if (!box) return;
-  const { data, error } = await sb.from('messages').select('*, sender:profiles!messages_sender_id_fkey(display_name,is_admin,is_mod)').eq('order_id', orderId).order('id');
+  const { data, error } = await sb.from('messages').select('*, sender:profiles!messages_sender_id_fkey(display_name,is_admin,is_mod)').eq('order_id', orderId).eq('channel', chatChan).order('id');
   if (!document.getElementById('chat')) return;
   if (error) { box.innerHTML = `<p class="muted">${te('chat_fail')}</p>`; return; }
   const roleOf = (m) => chatRoles[m.sender_id] || (m.sender?.is_admin || m.sender?.is_mod ? 'role_crew' : 'role_member');
@@ -219,7 +225,10 @@ async function loadChat(orderId) {
   box.scrollTop = box.scrollHeight;
   if (!channel) {
     channel = sb.channel('order-' + orderId)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: 'order_id=eq.' + orderId }, () => loadChat(orderId))
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages', filter: 'order_id=eq.' + orderId }, (p) => {
+        const c = p.new?.channel || 'group';
+        if (c === chatChan) loadChat(orderId); else document.getElementById('chan-' + c)?.classList.add('dot');
+      })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'orders', filter: 'id=eq.' + orderId }, () => route())
       .subscribe();
   }
@@ -354,6 +363,13 @@ async function route() {
 const ask = (k, v) => window.confirm(t(k, v));
 const actions = {
   filter: (el) => { browseFilter = el.dataset.v; route(); },
+  chatchan: (el) => {
+    chatChan = el.dataset.v;
+    document.querySelectorAll('[data-act=chatchan]').forEach((b) => { const on = b.dataset.v === chatChan; b.classList.toggle('on', on); b.setAttribute('aria-selected', on); if (on) b.classList.remove('dot'); });
+    const staff = isStaff(), note = document.getElementById('chat-note'); if (note) note.textContent = t(chanNote(chatChan, staff));
+    const box = document.getElementById('chat'); if (box) box.innerHTML = `<p class="muted">${te('chat_loading')}</p>`;
+    loadChat(chatOrder);
+  },
   authmode: () => { authMode = authMode === 'in' ? 'up' : 'in'; route(); },
   signout: async () => { await sb.auth.signOut(); go('#/'); },
   order: async (el) => {
@@ -423,7 +439,7 @@ document.addEventListener('submit', async (e) => {
       }
     } else if (f.id === 'chat-form') {
       const body = document.getElementById('chat-in').value.trim(), orderId = location.hash.split('/')[2];
-      if (body) { const { error } = await sb.from('messages').insert({ order_id: orderId, body }); if (!fail(error)) { f.reset(); loadChat(orderId); } }
+      if (body) { const { error } = await sb.from('messages').insert({ order_id: orderId, body, channel: chatChan }); if (!fail(error)) { f.reset(); loadChat(orderId); } }
     } else if (f.id === 'sell-form') {
       const files = fd.getAll('shots').filter((x) => x && x.size);
       if (files.length < 1 || files.length > 6) return toast(t('shots_count'));

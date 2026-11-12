@@ -92,6 +92,7 @@ html[lang=ar] .btn{letter-spacing:0}
 html[dir=rtl] .flip{transform:scaleX(-1)}
 .chips{display:flex;gap:8px;flex-wrap:wrap}
 .chip{min-height:44px;padding:0 12px;border-radius:14px;border:2px solid var(--btn2line);background:var(--btn2);box-shadow:0 4px 0 #14204A;color:#fff;font:800 13px var(--body);cursor:pointer}
+.chip.dot{position:relative}.chip.dot::after{content:'';position:absolute;top:-4px;inset-inline-end:-4px;width:12px;height:12px;border-radius:6px;background:var(--ember);border:2px solid var(--panel)}
 .chip.on{border-color:#FFE58A;background:var(--gold);box-shadow:0 4px 0 #A9820A;color:#2B2000}
 label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:800;letter-spacing:.8px;color:var(--ice);text-transform:uppercase}
 html[lang=ar] label{font-size:13px;letter-spacing:0}
