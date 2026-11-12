@@ -40,6 +40,7 @@ const fail = (error) => { if (error) { toast(errText(error.message)); return tru
 const uid = () => session?.user?.id || null;
 const isAdmin = () => !!profile?.is_admin;
 const isStaff = () => !!(profile?.is_admin || profile?.is_mod);
+const isManager = () => !!(profile?.is_admin || (profile?.is_mod && profile?.mod_level === 'full'));
 const shotUrl = (path) => sb.storage.from('screenshots').getPublicUrl(path).data.publicUrl;
 const go = (hash) => { if (location.hash === hash) route(); else location.hash = hash; };
 
@@ -104,7 +105,7 @@ async function vBrowse() {
 async function vListing(id) {
   const { data: l, error } = await sb.from('listings').select('*, seller:profiles!listings_seller_id_fkey(display_name,trades)').eq('id', id).maybeSingle();
   if (fail(error) || !l) return `${backBtn('#/')}<p class="muted">${te('listing_na')}</p>`;
-  const tr = tierOf(l.fc), mine = uid() === l.seller_id, staff = isStaff();
+  const tr = tierOf(l.fc), mine = uid() === l.seller_id, staff = isManager();
   const claimBtn = `<a class="btn" href="#/checkout/${esc(l.id)}">${te('claim')}</a>`;
   const delBtn = `<button class="btn2 danger" data-act="adminremove" data-id="${esc(l.id)}">${te('crew_delete_listing')}</button>`;
   let cta = '';
@@ -180,7 +181,7 @@ async function vOrder(id) {
   if (!uid()) return needLogin('handover');
   const { data: o, error } = await sb.from('orders').select('*, listing:listings(*), buyer:profiles!orders_buyer_id_fkey(display_name), seller:profiles!orders_seller_id_fkey(display_name)').eq('id', id).maybeSingle();
   if (fail(error) || !o) return `${backBtn('#/orders')}<p class="muted">${te('order_nf')}</p>`;
-  const admin = isAdmin(), staff = isStaff(), buyer = o.buyer_id === uid(), seller = o.seller_id === uid();
+  const admin = isManager(), staff = isStaff(), buyer = o.buyer_id === uid(), seller = o.seller_id === uid();
   chatRoles = { [o.buyer_id]: 'role_buyer', [o.seller_id]: 'role_seller' };
   chatChans = staff ? ['group', 'seller', 'buyer'] : seller ? ['group', 'seller'] : buyer ? ['group', 'buyer'] : ['group'];
   if (chatOrder !== o.id || !chatChans.includes(chatChan)) { chatOrder = o.id; chatChan = 'group'; }
@@ -217,7 +218,7 @@ async function vOrder(id) {
       <div class="bar" role="img" aria-label="${te('progress', { d: done })}"><div style="width:${done * 20}%"></div></div></div>
     ${disputed ? `<div class="panel warn"><p style="font-size:14px;font-weight:700">${te('dispute_open')}</p></div>` : ''}
     ${closed ? '' : `<div class="col" style="gap:8px">${stepHtml}</div>`}
-    <div class="col">${actions}</div>
+    <div class="col">${actions}${admin ? `<button class="btn2 danger" data-act="delorder" data-id="${esc(o.id)}">${te('delete_order')}</button>` : ''}</div>
     ${staff && !admin && !buyer && !seller ? `<p class="muted">${te('helper_note')}</p>` : ''}
     <div class="panel col"><h2>${te('chat_title')}</h2>
       <div class="chips" role="tablist">${chatChans.map((c) => `<button class="chip ${c === chatChan ? 'on' : ''}" role="tab" aria-selected="${c === chatChan}" data-act="chatchan" data-v="${c}" id="chan-${c}">${te(chanLabel(c, staff))}</button>`).join('')}</div>
@@ -320,14 +321,16 @@ async function vMe() {
 }
 
 function userRow(u) {
-  const me = u.id === uid();
-  const roleKey = u.closed ? 'r_closed' : u.is_admin ? 'r_admin' : u.is_mod ? 'r_helper' : 'r_member';
+  const me = u.id === uid(), owner = isAdmin();
+  const role = u.is_mod ? (u.mod_level === 'full' ? 'full' : 'chat') : 'member';
+  const roleKey = u.closed ? 'r_closed' : u.is_admin ? 'r_admin' : role === 'full' ? 'r_helper_full' : role === 'chat' ? 'r_helper_chat' : 'r_member';
   const roleStyle = u.closed ? 'border-color:#C65A5A;color:#FF9B9B' : u.is_admin ? 'border-color:var(--gold);color:var(--gold)' : u.is_mod ? 'border-color:var(--ice);color:var(--ice)' : '';
-  const buttons = (u.is_admin || u.closed || me) ? '' : `<div class="grid2">
-      <button class="btn2" data-act="helper" data-id="${esc(u.id)}" data-v="${u.is_mod ? 'off' : 'on'}">${te(u.is_mod ? 'remove_helper' : 'make_helper')}</button>
-      <button class="btn2 danger" data-act="deluser" data-id="${esc(u.id)}" data-name="${esc(u.display_name)}">${te('delete_acc')}</button></div>`;
+  const editable = !(u.is_admin || u.closed || me);
+  const picker = editable && owner ? `<div class="chips" role="group" aria-label="${te('role_pick')}">${['member', 'chat', 'full'].map((r) => `<button class="chip ${r === role ? 'on' : ''}" aria-pressed="${r === role}" data-act="setrole" data-id="${esc(u.id)}" data-v="${r}">${te('pick_' + r)}</button>`).join('')}</div>` : '';
+  const canDelete = editable && (owner || !u.is_mod);
+  const del = canDelete ? `<button class="btn2 danger" data-act="deluser" data-id="${esc(u.id)}" data-name="${esc(u.display_name)}">${te('delete_acc')}</button>` : '';
   return `<div class="panel col" style="gap:8px;min-width:0"><div class="row between" style="align-items:flex-start"><div style="min-width:0"><h2 style="font-size:17px;overflow-wrap:anywhere">${esc(dname(u.display_name))}${me ? ` <span class="small" style="color:var(--muted)">(${te('r_you')})</span>` : ''}</h2><p class="small ltr" style="color:var(--muted);font-weight:700;overflow-wrap:anywhere;display:block">${esc(u.email)}</p></div><span class="tag" style="flex-shrink:0;${roleStyle}">${te(roleKey)}</span></div>
-    <p class="small" style="color:var(--muted)">${te('joined', { n: u.trades, d: new Date(u.created_at).toLocaleDateString(locale()) })}</p>${buttons}</div>`;
+    <p class="small" style="color:var(--muted)">${te('joined', { n: u.trades, d: new Date(u.created_at).toLocaleDateString(locale()) })}</p>${picker}${del}</div>`;
 }
 function renderUsers() {
   const box = document.getElementById('user-list'); if (!box) return;
@@ -340,18 +343,21 @@ async function vAdmin() {
   const [pend, ords, usersRes] = await Promise.all([
     sb.from('listings').select('*, seller:profiles!listings_seller_id_fkey(display_name,trades)').eq('status', 'pending').order('created_at'),
     sb.from('orders').select('*, listing:listings(fc,power_m)').in('status', ['awaiting_payment', 'paid', 'seller_unbound', 'hold', 'disputed']).order('updated_at'),
-    isAdmin() ? sb.rpc('admin_list_users') : Promise.resolve({ data: [] })
+    isManager() ? sb.rpc('crew_list_users') : Promise.resolve({ data: [] }),
   ]);
+  const past = isManager() ? await sb.from('orders').select('*, listing:listings(fc,power_m)').in('status', ['completed', 'cancelled', 'refunded']).order('updated_at', { ascending: false }).limit(60) : { data: [] };
   const s = settings, users = Array.isArray(usersRes.data) ? usersRes.data : [];
   vAdmin.users = users;
   const pendList = pend.data || [], ordList = ords.data || [];
   const common = `<h2>${te('to_review', { n: pendList.length })}</h2>${cards(pendList, 'nothing_waiting')}
     <h2>${te('open_orders', { n: ordList.length })}</h2>${ordList.length ? `<div class="cards">${ordList.map(orderRow).join('')}</div>` : `<p class="muted">${te('no_open')}</p>`}`;
-  if (!isAdmin()) return `<h1>${te('panel')}</h1><p class="muted">${te('helper_intro')}</p>${common}`;
+  if (!isManager()) return `<h1>${te('panel')}</h1><p class="muted">${te('helper_intro_chat')}</p><h2>${te('open_orders', { n: ordList.length })}</h2>${ordList.length ? `<div class="cards">${ordList.map(orderRow).join('')}</div>` : `<p class="muted">${te('no_open')}</p>`}`;
+  const pastList = past.data || [];
   setTimeout(renderUsers, 0);
-  return `<h1>${te('panel')}</h1>${common}
+  return `<h1>${te('panel')}</h1>${isAdmin() ? '' : `<p class="muted">${te('helper_intro_full')}</p>`}${common}
+    <h2>${te('past_orders', { n: pastList.length })}</h2>${pastList.length ? `<div class="cards">${pastList.map(orderRow).join('')}</div>` : `<p class="muted">${te('no_past')}</p>`}
     <h2>${te('accounts', { n: users.length })}</h2>
-    <p class="small" style="color:var(--muted)">${te('helpers_note')}</p>
+    <p class="small" style="color:var(--muted);white-space:pre-line">${te(isAdmin() ? 'helpers_note' : 'helpers_note_full')}</p>
     <input id="uq" type="search" aria-label="${te('accounts_search')}" placeholder="${te('accounts_search')}" value="${esc(userQuery)}" dir="auto">
     <div id="user-list" class="cards"></div>
     <h2>${te('settings')}</h2>
@@ -408,11 +414,16 @@ const actions = {
     const { error } = await sb.from('listings').update({ status: el.dataset.v }).eq('id', el.dataset.id);
     if (!fail(error)) { toast(t(el.dataset.v === 'active' ? 'listing_live' : 'listing_rejected'), true); go('#/admin'); }
   },
-  helper: async (el) => {
-    const on = el.dataset.v === 'on';
-    if (!ask(on ? 'c_helper_on' : 'c_helper_off')) return;
-    const { error } = await sb.rpc('admin_set_helper', { p_user: el.dataset.id, p_on: on });
-    if (!fail(error)) { toast(t(on ? 'helper_added' : 'helper_removed'), true); route(); }
+  setrole: async (el) => {
+    const r = el.dataset.v;
+    if (el.classList.contains('on') || !ask('c_role_' + r)) return;
+    const { error } = await sb.rpc('admin_set_role', { p_user: el.dataset.id, p_role: r });
+    if (!fail(error)) { toast(t('role_saved'), true); route(); }
+  },
+  delorder: async (el) => {
+    if (!ask('c_del_order')) return;
+    const { error } = await sb.rpc('admin_delete_order', { p_order: el.dataset.id });
+    if (!fail(error)) { toast(t('order_deleted'), true); go('#/admin'); }
   },
   deluser: async (el) => {
     if (!ask('c_delete_acc', { name: el.dataset.name })) return;

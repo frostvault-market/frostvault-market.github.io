@@ -1,0 +1,7 @@
+-- Applied 2026-11-12:
+-- profiles.mod_level ('chat' | 'full'); is_manager() = owner or full helper.
+-- Full helpers: approve/delete listings, all order money steps, settings, list accounts, delete member accounts, delete orders.
+-- Chat helpers: read every order and write in all its chats, nothing else.
+-- Owner only: admin_set_role(user, 'member'|'chat'|'full'), deleting helper accounts.
+-- admin_delete_order(order): removes the order and its chats; a reserved account goes back on the market.
+-- crew_list_users() replaces admin_list_users() in the app.
