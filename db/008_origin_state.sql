@@ -1,0 +1,1 @@
+-- Applied 2026-11-12: listings.origin_state int (state where the account was created). 'State' is now labeled Current state.

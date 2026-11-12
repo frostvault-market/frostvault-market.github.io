@@ -89,7 +89,7 @@ async function vBrowse() {
   const { data, error } = await sb.from('listings').select('*, seller:profiles!listings_seller_id_fkey(display_name,trades)').eq('status', 'active').order('created_at', { ascending: false }).limit(200);
   if (fail(error)) return `<p class="muted">${te('load_listings_fail')}</p>`;
   const q = browseQuery.trim().toLowerCase();
-  const rows = data.filter((l) => (browseFilter === 'ALL' || tierKey(l.fc) === browseFilter) && (!q || `${fcLabel(l.fc)} fc${l.fc} ${l.power_m}m vip${l.vip} vip ${l.vip} state ${l.state} ${l.state}`.toLowerCase().includes(q)));
+  const rows = data.filter((l) => (browseFilter === 'ALL' || tierKey(l.fc) === browseFilter) && (!q || `${fcLabel(l.fc)} fc${l.fc} ${l.power_m}m vip${l.vip} vip ${l.vip} state ${l.state} ${l.state} ${l.origin_state || ''}`.toLowerCase().includes(q)));
   const chips = ['ALL', 'LEGENDARY', 'EPIC', 'RARE', 'COMMON'].map((c) => `<button class="chip ${browseFilter === c ? 'on' : ''}" data-act="filter" data-v="${c}" aria-pressed="${browseFilter === c}">${te('filter_' + c)}</button>`).join('');
   return `<div class="panel ice row" style="background:var(--btn2)">
       <svg aria-hidden="true" width="44" height="44" viewBox="0 0 24 24" fill="#FF9A2E" style="flex-shrink:0"><path d="M12 2c1 4 6 5.5 6 11a6 6 0 01-12 0c0-2.5 1-4 2.5-5.5 0 2 .8 3 2 3.5C10.5 8 10 5 12 2z"/></svg>
@@ -120,7 +120,7 @@ async function vListing(id) {
       <div style="min-width:0"><div class="tier" style="color:${tr.c}">${esc(tr.n)}</div><h1>${te('power', { p: l.power_m })}</h1><h2 class="ltr" style="font-size:24px;color:var(--ember);display:inline-block">${money(l.price)}</h2></div>
     </div>
     <div class="grid3 stats">
-      ${stat(l.vip, 's_vip')}${stat(l.state, 's_state')}
+      ${stat(l.vip, 's_vip')}${stat(l.state, 's_state')}${stat(l.origin_state, 's_origin')}
       ${stat(l.charm, 's_charm')}${stat(l.infantry, 's_inf')}${stat(l.lancer, 's_lan')}${stat(l.marksman, 's_mark')}
       ${stat(l.chief_gear, 's_chief')}${stat(l.pet_power, 's_pets')}
     </div>
@@ -258,6 +258,7 @@ function vSell() {
         <label>${te('f_vip')}<input name="vip" type="number" inputmode="numeric" min="0" max="20" required placeholder="12" dir="ltr"></label>
         <label>${te('f_power')}<input name="power_m" type="number" inputmode="decimal" min="0.1" step="0.1" required placeholder="610" dir="ltr"></label>
         <label>${te('f_state')}<input name="state" type="number" inputmode="numeric" min="1" max="99999" required placeholder="1412" dir="ltr"></label>
+        <label style="grid-column:1/-1">${te('f_origin')}<input name="origin_state" type="number" inputmode="numeric" min="1" max="99999" required placeholder="1388" dir="ltr"></label>
       </div>
       <div class="grid2">
         <fieldset style="grid-column:1/-1;margin:0;padding:0;border:0;display:flex;flex-direction:column;gap:8px"><legend style="padding:0;margin-bottom:8px" class="lg">${te('f_bound')}</legend>
@@ -476,7 +477,7 @@ document.addEventListener('submit', async (e) => {
         const { error } = await sb.storage.from('screenshots').upload(path, file, { contentType: file.type || 'image/jpeg' });
         if (fail(error)) return; paths.push(path);
       }
-      const { error } = await sb.from('listings').insert({ fc: +fd.get('fc'), vip: +fd.get('vip'), power_m: +fd.get('power_m'), state: +fd.get('state'), login_types: logins, price: +fd.get('price'), description: (fd.get('description') || '').trim(), charm: fd.get('charm'), chief_gear: fd.get('chief_gear'), pet_power: (fd.get('pet_power') || '').trim(), experts: (fd.get('experts') || '').trim(), island: (fd.get('island') || '').trim(), profile_shot: paths[0], gear_shot: paths[1], infantry: fd.get('infantry'), lancer: fd.get('lancer'), marksman: fd.get('marksman'), screenshots: paths, attested: true });
+      const { error } = await sb.from('listings').insert({ fc: +fd.get('fc'), vip: +fd.get('vip'), power_m: +fd.get('power_m'), state: +fd.get('state'), origin_state: +fd.get('origin_state'), login_types: logins, price: +fd.get('price'), description: (fd.get('description') || '').trim(), charm: fd.get('charm'), chief_gear: fd.get('chief_gear'), pet_power: (fd.get('pet_power') || '').trim(), experts: (fd.get('experts') || '').trim(), island: (fd.get('island') || '').trim(), profile_shot: paths[0], gear_shot: paths[1], infantry: fd.get('infantry'), lancer: fd.get('lancer'), marksman: fd.get('marksman'), screenshots: paths, attested: true });
       if (!fail(error)) { toast(t('sent_review'), true); go('#/me'); }
     } else if (f.id === 'settings-form') {
       const patch = { seller_fee_pct: +fd.get('seller_fee_pct'), hold_days: +fd.get('hold_days'), payment_instructions: fd.get('payment_instructions').trim() };
