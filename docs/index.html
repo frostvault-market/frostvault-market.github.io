@@ -1,85 +1,125 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#101B3A">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="FrostVault">
+<meta name="format-detection" content="telephone=no">
 <title>FrostVault | Whiteout Survival Accounts</title>
 <meta name="description" content="FrostVault: buy and sell Whiteout Survival accounts with a middleman holding the payment. Independent service.">
 <meta property="og:title" content="FrostVault | Whiteout Survival Accounts">
 <meta property="og:description" content="Buy and sell Whiteout Survival accounts. Every deal locked in the vault.">
-<meta property="og:image" content="https://frostvault-market.netlify.app/share.jpg">
+<meta property="og:image" content="https://frostvault-market.github.io/frostvault/share.jpg">
 <meta property="og:type" content="website">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
+<script>
+/* pick the language before anything paints, so Arabic users never see a flash of English */
+(function () {
+  var l = 'en';
+  try { l = localStorage.getItem('fv_lang') || ((navigator.language || '').slice(0, 2) === 'ar' ? 'ar' : 'en'); } catch (e) {}
+  if (l !== 'ar') l = 'en';
+  document.documentElement.lang = l;
+  document.documentElement.dir = l === 'ar' ? 'rtl' : 'ltr';
+})();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=Lilita+One&family=Nunito:wght@600;700;800&display=swap">
 <style>
-:root{--bg:#101B3A;--deep:#0B1330;--panel:#1B2B57;--line:#33509F;--btn2:#2A418A;--btn2line:#4C6BD0;--ice:#6FE3FF;--ember:#FF9A2E;--gold:#FFD23F;--muted:#B9C6EA;--soft:#DCE6FF}
-*{box-sizing:border-box}
-html,body{margin:0;background:var(--deep);color:#fff;font-family:Nunito,system-ui,sans-serif;font-weight:600;-webkit-text-size-adjust:100%}
-#app{position:relative;max-width:480px;min-height:100dvh;margin:0 auto;background:var(--bg);display:flex;flex-direction:column;overflow:hidden}
+:root{--bg:#101B3A;--deep:#0B1330;--panel:#1B2B57;--line:#33509F;--btn2:#2A418A;--btn2line:#4C6BD0;--ice:#6FE3FF;--ember:#FF9A2E;--gold:#FFD23F;--muted:#B9C6EA;--soft:#DCE6FF;--maxw:480px;--navh:76px;
+  --body:Nunito,system-ui,sans-serif;--display:'Lilita One',Nunito,sans-serif}
+html[lang=ar]{--body:Cairo,Nunito,system-ui,sans-serif;--display:Cairo,'Lilita One',sans-serif}
+@media (min-width:700px){:root{--maxw:760px}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--deep);color:#fff;font-family:var(--body);font-weight:600;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+#app{position:relative;width:100%;max-width:var(--maxw);min-height:100vh;min-height:100dvh;margin:0 auto;background:var(--bg);display:flex;flex-direction:column;overflow-x:hidden}
 #sky{position:absolute;left:0;top:0;width:100%;height:150px;z-index:0;pointer-events:none}
-header,main,nav{position:relative;z-index:1}
-header{display:flex;justify-content:space-between;align-items:center;padding:calc(16px + env(safe-area-inset-top)) 16px 6px}
+header,main{position:relative;z-index:1}
+/* header stays left-to-right in both languages so the logo and language button keep their place top-left */
+header{direction:ltr;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:calc(16px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 6px max(16px, env(safe-area-inset-left))}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
 .logo{display:flex;align-items:center;gap:8px;color:#fff;text-decoration:none;font-family:'Lilita One',sans-serif;font-size:26px;letter-spacing:.5px}
 .logo img{width:46px;height:46px;display:block}
+.lang-btn{display:flex;align-items:center;gap:5px;height:40px;padding:0 10px;border-radius:12px;border:2px solid var(--btn2line);background:var(--btn2);box-shadow:0 3px 0 #14204A;color:#fff;font:800 14px Cairo,Nunito,sans-serif;cursor:pointer}
+.lang-btn svg{flex-shrink:0}
 #splash{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;animation:splashOut .6s ease-in 2s forwards}
 #splash img{width:min(62vw,260px);height:auto;animation:logoIn .7s cubic-bezier(.2,1.4,.4,1) both,logoOut .6s ease-in 2s forwards}
-#splash p{font-family:'Lilita One',sans-serif;font-size:15px;letter-spacing:2px;color:var(--ice);animation:logoIn .7s .25s both}
+#splash p{margin:0;font-family:var(--display);font-size:15px;letter-spacing:2px;color:var(--ice);animation:logoIn .7s .25s both}
+html[lang=ar] #splash p{letter-spacing:0;font-size:18px;font-weight:800}
 @keyframes logoIn{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
 @keyframes logoOut{to{transform:scale(1.9);opacity:0}}
 @keyframes splashOut{to{opacity:0;visibility:hidden}}
 @media (prefers-reduced-motion:reduce){#splash,#splash img,#splash p{animation-duration:.01s}}
 .hero-logo{width:150px;height:150px;align-self:center}
-main{flex:1;padding:10px 16px 20px;display:flex;flex-direction:column;gap:12px}
-nav{position:sticky;bottom:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:8px 10px calc(8px + env(safe-area-inset-bottom));background:var(--deep);border-top:2px solid var(--line)}
+main{flex:1;padding:10px max(16px, env(safe-area-inset-right)) calc(var(--navh) + 24px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));display:flex;flex-direction:column;gap:12px}
+@media (min-width:700px){main{padding-left:28px;padding-right:28px}}
+/* bottom bar is fixed to the screen, so it never scrolls away on phones */
+nav{position:fixed;z-index:8;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:var(--maxw);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:8px max(10px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));background:var(--deep);border-top:2px solid var(--line)}
 nav a{min-height:56px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;font-weight:800;color:var(--muted);text-decoration:none}
+html[lang=ar] nav a{font-size:12px}
 nav a.on{background:var(--btn2);color:var(--ice)}
-h1{margin:0;font-family:'Lilita One',sans-serif;font-weight:400;font-size:28px;line-height:32px}
-h2{margin:0;font-family:'Lilita One',sans-serif;font-weight:400;font-size:19px}
+h1{margin:0;font-family:var(--display);font-weight:400;font-size:28px;line-height:1.2}
+h2{margin:0;font-family:var(--display);font-weight:400;font-size:19px;line-height:1.3}
+html[lang=ar] h1,html[lang=ar] h2,html[lang=ar] .power,html[lang=ar] .btn{font-weight:800}
 p{margin:0}
 a{color:var(--ice)}
-.muted{color:var(--muted);font-size:13px;line-height:18px}
-.small{font-size:12px;line-height:17px}
+.muted{color:var(--muted);font-size:13px;line-height:1.45}
+.small{font-size:12px;line-height:1.45}
 .row{display:flex;align-items:center;gap:10px}
 .between{justify-content:space-between}
 .col{display:flex;flex-direction:column;gap:10px}
 .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
 .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.cards{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+@media (min-width:700px){.cards{grid-template-columns:repeat(2,minmax(0,1fr))}.grid3.stats{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .panel{padding:14px;border-radius:18px;background:var(--panel);border:2px solid var(--line);box-shadow:0 5px 0 var(--deep)}
 .panel.ice{border-color:var(--ice)}
 .panel.warn{background:#3A2410;border-color:var(--ember)}
-.btn,.btn2{display:flex;align-items:center;justify-content:center;width:100%;min-height:54px;padding:8px 14px;border-radius:16px;font-family:'Lilita One',sans-serif;font-size:19px;letter-spacing:.5px;text-decoration:none;text-align:center;cursor:pointer}
+.btn,.btn2{display:flex;align-items:center;justify-content:center;width:100%;min-height:54px;padding:8px 14px;border-radius:16px;font-family:var(--display);font-size:19px;letter-spacing:.5px;text-decoration:none;text-align:center;cursor:pointer}
+html[lang=ar] .btn{letter-spacing:0}
 .btn{background:var(--ember);border:2px solid #FFC37A;box-shadow:0 5px 0 #B85A00;color:#2B1400}
 .btn2{min-height:46px;background:var(--btn2);border:2px solid var(--btn2line);box-shadow:0 4px 0 #14204A;color:#fff;font-family:inherit;font-weight:800;font-size:14px;letter-spacing:0}
+.btn2.danger{background:#4A1A1A;border-color:#C65A5A;box-shadow:0 4px 0 #2A0E0E}
 .btn:active,.btn2:active{transform:translateY(3px);box-shadow:0 1px 0 #14204A}
 .btn[disabled],.btn2[disabled]{opacity:.55;cursor:default}
-.icon-btn{width:44px;height:44px;min-height:44px;padding:0;border-radius:14px}
+.icon-btn{width:44px;height:44px;min-height:44px;padding:0;border-radius:14px;flex-shrink:0}
+html[dir=rtl] .flip{transform:scaleX(-1)}
 .chips{display:flex;gap:8px;flex-wrap:wrap}
-.chip{min-height:44px;padding:0 12px;border-radius:14px;border:2px solid var(--btn2line);background:var(--btn2);box-shadow:0 4px 0 #14204A;color:#fff;font:800 13px Nunito,sans-serif;cursor:pointer}
+.chip{min-height:44px;padding:0 12px;border-radius:14px;border:2px solid var(--btn2line);background:var(--btn2);box-shadow:0 4px 0 #14204A;color:#fff;font:800 13px var(--body);cursor:pointer}
 .chip.on{border-color:#FFE58A;background:var(--gold);box-shadow:0 4px 0 #A9820A;color:#2B2000}
 label{display:flex;flex-direction:column;gap:4px;font-size:11px;font-weight:800;letter-spacing:.8px;color:var(--ice);text-transform:uppercase}
-label.check{flex-direction:row;gap:12px;align-items:flex-start;font-size:12px;line-height:17px;font-weight:600;letter-spacing:0;color:var(--muted);text-transform:none}
+html[lang=ar] label{font-size:13px;letter-spacing:0}
+label.check{flex-direction:row;gap:12px;align-items:flex-start;font-size:12px;line-height:1.45;font-weight:600;letter-spacing:0;color:var(--muted);text-transform:none}
+html[lang=ar] label.check{font-size:13px}
 label.check input{width:22px;height:22px;min-height:0;margin:0;flex-shrink:0;accent-color:var(--ice)}
-input,select,textarea{width:100%;min-height:46px;border-radius:12px;border:2px solid var(--line);background:var(--deep);color:#fff;font:800 15px Nunito,sans-serif;padding:8px 12px}
+/* 16px stops iPhone Safari from zooming into a field when it is tapped */
+input,select,textarea{width:100%;min-height:46px;border-radius:12px;border:2px solid var(--line);background:var(--deep);color:#fff;font:800 16px var(--body);padding:8px 12px;-webkit-appearance:none;appearance:none}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%236FE3FF' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;background-size:14px 14px;padding-right:34px}
+html[dir=rtl] select{background-position:left 12px center;padding-right:12px;padding-left:34px}
+input[type=checkbox]{-webkit-appearance:auto;appearance:auto}
+input[type=file]{font-size:16px;font-weight:700}
 textarea{min-height:90px;resize:vertical;font-weight:600}
 input:focus,select:focus,textarea:focus,button:focus-visible,a:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
-.card{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:18px;background:var(--panel);border:2px solid var(--line);box-shadow:0 5px 0 var(--deep);color:#fff;text-decoration:none}
+.card{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border-radius:18px;background:var(--panel);border:2px solid var(--line);box-shadow:0 5px 0 var(--deep);color:#fff;text-decoration:none;min-width:0}
 .emblem{width:56px;height:56px;flex-shrink:0;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#1A1430;font-family:'Lilita One',sans-serif;font-size:14px;line-height:16px}
 .emblem.big{width:84px;height:84px;border-radius:20px;font-size:18px}
 .tier{font-size:11px;font-weight:800;letter-spacing:1.2px}
-.power{font-family:'Lilita One',sans-serif;font-size:22px;line-height:24px}
-.price{padding:8px 12px;border-radius:12px;background:var(--ember);box-shadow:0 4px 0 #B85A00;font-family:'Lilita One',sans-serif;font-size:18px;color:#2B1400;white-space:nowrap}
-.stat{padding:10px 6px;border-radius:14px;background:var(--panel);border:2px solid var(--line);text-align:center}
-.stat b{display:block;font-family:'Lilita One',sans-serif;font-weight:400;font-size:18px;color:var(--ice)}
+html[lang=ar] .tier{font-size:12px;letter-spacing:0}
+.power{font-family:var(--display);font-size:22px;line-height:1.15}
+.price{padding:8px 12px;border-radius:12px;background:var(--ember);box-shadow:0 4px 0 #B85A00;font-family:'Lilita One',sans-serif;font-size:18px;color:#2B1400;white-space:nowrap;direction:ltr}
+.stat{padding:10px 6px;border-radius:14px;background:var(--panel);border:2px solid var(--line);text-align:center;min-width:0}
+.stat b{display:block;font-family:'Lilita One',sans-serif;font-weight:400;font-size:18px;color:var(--ice);overflow-wrap:anywhere}
 .stat span{font-size:11px;font-weight:800;letter-spacing:.4px;color:var(--muted)}
-.tag{display:inline-block;padding:4px 8px;border-radius:8px;background:var(--deep);border:2px solid var(--line);font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--soft)}
-.shots{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+html[lang=ar] .stat span{font-size:12px;letter-spacing:0}
+.tag{display:inline-block;padding:4px 8px;border-radius:8px;background:var(--deep);border:2px solid var(--line);font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--soft);white-space:nowrap}
+html[lang=ar] .tag{font-size:12px;letter-spacing:0}
+.shots{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;-webkit-overflow-scrolling:touch}
 .shots img{height:150px;border-radius:12px;border:2px solid var(--line)}
 .bar{height:14px;border-radius:7px;background:var(--deep);border:2px solid var(--line);overflow:hidden}
 .bar div{height:100%;background:var(--gold)}
@@ -87,18 +127,19 @@ input:focus,select:focus,textarea:focus,button:focus-visible,a:focus-visible{out
 .step .n{width:32px;height:32px;flex-shrink:0;border-radius:10px;border:2px solid var(--btn2line);display:flex;align-items:center;justify-content:center;font-family:'Lilita One',sans-serif;font-size:16px;color:var(--soft)}
 .step.done{background:var(--panel);border-color:var(--ice)}.step.done .n{background:var(--ice);border-color:var(--ice);color:var(--deep)}
 .step.now{background:#3A2410;border-color:var(--ember)}.step.now .n{background:var(--ember);border-color:var(--ember);color:#2B1400}
-.step b{display:block;font-size:15px;font-weight:800}.step span{font-size:12px;line-height:16px;color:var(--soft)}
-.chat{display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto}
-.msg{max-width:85%;padding:8px 12px;border-radius:14px;background:var(--btn2);font-size:14px;line-height:19px;white-space:pre-wrap;overflow-wrap:anywhere}
+.step b{display:block;font-size:15px;font-weight:800}.step span{font-size:12px;line-height:1.4;color:var(--soft)}
+.chat{display:flex;flex-direction:column;gap:8px;max-height:300px;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.msg{max-width:85%;padding:8px 12px;border-radius:14px;background:var(--btn2);font-size:14px;line-height:1.4;white-space:pre-wrap;overflow-wrap:anywhere;unicode-bidi:plaintext}
 .msg.me{align-self:flex-end;background:#1F6E8C}
 .msg.crew{border:2px solid var(--gold)}
-.msg small{display:block;font-size:11px;font-weight:800;color:var(--soft)}
-#toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);max-width:420px;width:calc(100% - 32px);padding:12px 14px;border-radius:14px;background:#3A2410;border:2px solid var(--ember);font-weight:800;font-size:14px;z-index:9;display:none}
+.msg small{display:block;font-size:11px;font-weight:800;color:var(--soft);unicode-bidi:isolate}
+.ltr{direction:ltr;unicode-bidi:isolate}
+#toast{position:fixed;left:50%;bottom:calc(var(--navh) + 18px + env(safe-area-inset-bottom));transform:translateX(-50%);max-width:420px;width:calc(100% - 32px);padding:12px 14px;border-radius:14px;background:#3A2410;border:2px solid var(--ember);font-weight:800;font-size:14px;z-index:9;display:none}
 #toast.ok{background:#0F3A4A;border-color:var(--ice)}
 </style>
 </head>
 <body>
-<div id="splash" aria-hidden="true"><img src="logo.webp" alt="" width="260" height="260"><p>TRADE SAFE</p></div>
+<div id="splash" aria-hidden="true"><img src="logo.webp" alt="" width="260" height="260"><p data-i18n="splash">TRADE SAFE</p></div>
 <div id="app">
 <svg id="sky" aria-hidden="true" viewBox="0 0 390 150" preserveAspectRatio="xMidYMin slice">
 <defs><linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#101B3A" stop-opacity="0"/><stop offset="1" stop-color="#101B3A"/></linearGradient></defs>
@@ -114,20 +155,24 @@ input:focus,select:focus,textarea:focus,button:focus-visible,a:focus-visible{out
 <g fill="#fff"><circle cx="22" cy="18" r="2" opacity=".6"/><circle cx="64" cy="8" r="1.5" opacity=".5"/><circle cx="98" cy="30" r="2.5" opacity=".5"/><circle cx="158" cy="10" r="2" opacity=".6"/><circle cx="196" cy="24" r="1.5" opacity=".5"/><circle cx="276" cy="12" r="2" opacity=".6"/><circle cx="338" cy="8" r="1.5" opacity=".5"/><circle cx="372" cy="22" r="2.5" opacity=".5"/></g>
 </svg>
 <header>
+<div class="brand">
 <a class="logo" href="#/"><img src="logo-96.png" alt="" width="46" height="46">FrostVault</a>
-<a id="me-btn" class="btn2 icon-btn" href="#/me" aria-label="My account"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="#FFD23F"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.600 8 7z"/></svg></a>
-</header>
-<main id="view" aria-live="polite"><p class="muted">Loading…</p></main>
-<nav aria-label="Main">
-<a href="#/" data-tab="browse"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/></svg>Browse</a>
-<a href="#/sell" data-tab="sell"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg>Sell</a>
-<a href="#/orders" data-tab="orders"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14v14H5zM9 10h6M9 14h6"/></svg>Quests</a>
-<a href="#/shield" data-tab="shield"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"><path d="M12 3l7 3v5c0 5-3 8.5-7 10-4-1.5-7-5-7-10V6l7-3z"/></svg>Shield</a>
-</nav>
+<button id="lang-btn" class="lang-btn" type="button" aria-label="العربية"><svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6FE3FF" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.7 5.6 3.7 9s-1.2 6.4-3.7 9c-2.5-2.6-3.7-5.6-3.7-9S9.5 5.6 12 3z"/></svg><span id="lang-label">ع</span></button>
 </div>
+<a id="me-btn" class="btn2 icon-btn" href="#/me" aria-label="My account" data-i18n-label="my_account"><svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="#FFD23F"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7z"/></svg></a>
+</header>
+<main id="view" aria-live="polite"><p class="muted">…</p></main>
+</div>
+<nav aria-label="Main" data-i18n-label="nav_main">
+<a href="#/" data-tab="browse"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4-4"/></svg><span data-i18n="nav_browse">Browse</span></a>
+<a href="#/sell" data-tab="sell"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8"/></svg><span data-i18n="nav_sell">Sell</span></a>
+<a href="#/orders" data-tab="orders"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5h14v14H5zM9 10h6M9 14h6"/></svg><span data-i18n="nav_quests">Quests</span></a>
+<a href="#/shield" data-tab="shield"><svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round"><path d="M12 3l7 3v5c0 5-3 8.5-7 10-4-1.5-7-5-7-10V6l7-3z"/></svg><span data-i18n="nav_shield">Shield</span></a>
+</nav>
 <div id="toast" role="status"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
+<script src="i18n.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
