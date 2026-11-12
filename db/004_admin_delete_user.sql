@@ -1,0 +1,4 @@
+-- Applied 2026-11-12: admin_delete_user(uuid) and admin_list_users() now returns a "closed" flag.
+-- Accounts with no trade history are fully deleted. Accounts with past trades are closed instead:
+-- sign-in blocked, name changed to "Deleted user", active listings removed, trade records kept.
+-- Refuses: non-admins, deleting yourself, deleting admins, accounts with an open order.
