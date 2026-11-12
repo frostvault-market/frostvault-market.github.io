@@ -1,0 +1,2 @@
+-- Applied 2026-11-12: listings.pet_power, experts, island (free text), profile_shot, gear_shot (photo paths).
+-- chief_gear is now one of '', T0-T6, Max for new listings (constraint NOT VALID, so older free-text rows are kept).

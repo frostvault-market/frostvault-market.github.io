@@ -121,15 +121,25 @@ async function vListing(id) {
     <div class="grid3 stats">
       ${stat(l.vip, 's_vip')}${stat(l.state, 's_state')}${stat(LOGIN[l.login_type] || l.login_type, 's_login')}${stat(l.gear_tier, 's_gear')}
       ${stat(l.charm, 's_charm')}${stat(l.infantry, 's_inf')}${stat(l.lancer, 's_lan')}${stat(l.marksman, 's_mark')}
+      ${stat(l.chief_gear, 's_chief')}${stat(l.pet_power, 's_pets')}
     </div>
-    ${l.chief_gear ? `<div class="panel"><div class="tier" style="color:var(--ice)">${te('s_chief')}</div><p style="font-size:15px;line-height:1.4;font-weight:700;overflow-wrap:anywhere;unicode-bidi:plaintext">${esc(l.chief_gear)}</p></div>` : ''}
-    <div class="shots">${(l.screenshots || []).map((p) => `<a href="${esc(shotUrl(p))}" target="_blank" rel="noopener"><img src="${esc(shotUrl(p))}" alt="${te('shot_alt')}" loading="lazy"></a>`).join('')}</div>
+    ${textPanel(l.experts, 's_experts')}${textPanel(l.island, 's_island')}
+    ${shotsHtml(l)}
     ${l.description ? `<div class="panel"><p style="font-size:14px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;unicode-bidi:plaintext">${esc(l.description)}</p></div>` : ''}
     <div class="panel row"><div style="flex:1;min-width:0"><h2 style="font-size:17px;overflow-wrap:anywhere">${esc(dname(l.seller?.display_name) || t('seller_fallback'))}</h2><p class="small" style="color:var(--muted);font-weight:700">${esc(rankOf(l.seller?.trades || 0))} · ${te('completed_trades', { n: l.seller?.trades || 0 })}</p></div></div>
     <p class="small" style="color:var(--muted)">${te('ban_warning')} <a href="#/shield">${te('read_risks')}</a></p>
     ${cta}`;
 }
 
+function textPanel(v, k) {
+  return v ? `<div class="panel"><div class="tier" style="color:var(--ice)">${te(k)}</div><p style="font-size:15px;line-height:1.45;font-weight:700;white-space:pre-wrap;overflow-wrap:anywhere;unicode-bidi:plaintext">${esc(v)}</p></div>` : '';
+}
+function shotsHtml(l) {
+  const one = (p, k) => `<figure style="margin:0;flex-shrink:0;display:flex;flex-direction:column;gap:4px"><a href="${esc(shotUrl(p))}" target="_blank" rel="noopener"><img src="${esc(shotUrl(p))}" alt="${te(k)}" loading="lazy"></a>${k !== 'shot_alt' ? `<figcaption class="small" style="color:var(--ice);font-weight:800">${te(k)}</figcaption>` : ''}</figure>`;
+  const named = [[l.profile_shot, 'shot_profile'], [l.gear_shot, 'shot_gear']].filter((x) => x[0]);
+  const rest = (l.screenshots || []).filter((p) => p !== l.profile_shot && p !== l.gear_shot);
+  return `<div class="shots">${named.map(([p, k]) => one(p, k)).join('')}${rest.map((p) => one(p, 'shot_alt')).join('')}</div>`;
+}
 async function vCheckout(id) {
   if (!uid()) return needLogin('claim_title');
   const { data: l, error } = await sb.from('listings').select('*').eq('id', id).maybeSingle();
@@ -254,12 +264,19 @@ function vSell() {
       <div class="panel grid2">
         <label>${te('f_gear')}<select name="gear_tier" required>${choose}<option>T1</option><option>T2</option><option>T3</option><option value="Mix">Mix</option></select></label>
         <label>${te('f_charm')}<select name="charm" required>${choose}${CHARMS.map((c) => `<option>${c}</option>`).join('')}</select></label>
-        <label style="grid-column:1/-1">${te('f_chief')}<input name="chief_gear" maxlength="60" required placeholder="${te('f_chief_ph')}" dir="auto"></label>
+        <label>${te('f_chief')}<select name="chief_gear" required>${choose}${['T0', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'Max'].map((c) => `<option>${c}</option>`).join('')}</select></label>
+        <label>${te('f_pets')}<input name="pet_power" maxlength="60" required placeholder="${te('f_pets_ph')}" dir="auto"></label>
       </div>
       <div class="panel grid3">${troop('infantry', 'f_inf')}${troop('lancer', 'f_lan')}${troop('marksman', 'f_mark')}</div>
       <p class="small" style="color:var(--muted);white-space:pre-line">${te('fee_note')}${Number(settings.seller_fee_pct) ? ' ' + te('seller_fee_note', { p: settings.seller_fee_pct }) : ''}</p>
+      <label>${te('f_experts')}<textarea name="experts" maxlength="1000" placeholder="${te('f_free_ph')}" dir="auto"></textarea></label>
+      <label>${te('f_island')}<textarea name="island" maxlength="1000" placeholder="${te('f_free_ph')}" dir="auto"></textarea></label>
       <label>${te('f_extra')}<textarea name="description" maxlength="1000" placeholder="${te('f_extra_ph')}" dir="auto"></textarea></label>
-      <label>${te('f_shots')}<input name="shots" type="file" accept="image/jpeg,image/png,image/webp" multiple required></label>
+      <div class="panel col">
+        <label>${te('f_shot_profile')}<input name="shot_profile" type="file" accept="image/jpeg,image/png,image/webp" required></label>
+        <label>${te('f_shot_gear')}<input name="shot_gear" type="file" accept="image/jpeg,image/png,image/webp" required></label>
+        <label>${te('f_shots_more')}<input name="shots" type="file" accept="image/jpeg,image/png,image/webp" multiple></label>
+      </div>
       <label class="check"><input name="attested" type="checkbox" required>${te('attest')}</label>
       <button class="btn">${te('send_review')}</button>
     </form>`;
@@ -441,8 +458,11 @@ document.addEventListener('submit', async (e) => {
       const body = document.getElementById('chat-in').value.trim(), orderId = location.hash.split('/')[2];
       if (body) { const { error } = await sb.from('messages').insert({ order_id: orderId, body, channel: chatChan }); if (!fail(error)) { f.reset(); loadChat(orderId); } }
     } else if (f.id === 'sell-form') {
-      const files = fd.getAll('shots').filter((x) => x && x.size);
-      if (files.length < 1 || files.length > 6) return toast(t('shots_count'));
+      const prof = fd.get('shot_profile'), gear = fd.get('shot_gear');
+      if (!prof?.size || !gear?.size) return toast(t('shots_required'));
+      const more = fd.getAll('shots').filter((x) => x && x.size);
+      if (more.length > 4) return toast(t('shots_count'));
+      const files = [prof, gear, ...more];
       if (files.some((x) => x.size > 3 * 1024 * 1024)) return toast(t('shots_size'));
       const paths = [];
       for (const file of files) {
@@ -451,7 +471,7 @@ document.addEventListener('submit', async (e) => {
         const { error } = await sb.storage.from('screenshots').upload(path, file, { contentType: file.type || 'image/jpeg' });
         if (fail(error)) return; paths.push(path);
       }
-      const { error } = await sb.from('listings').insert({ fc: +fd.get('fc'), vip: +fd.get('vip'), power_m: +fd.get('power_m'), state: +fd.get('state'), login_type: fd.get('login_type'), price: +fd.get('price'), description: (fd.get('description') || '').trim(), gear_tier: fd.get('gear_tier'), charm: fd.get('charm'), chief_gear: (fd.get('chief_gear') || '').trim(), infantry: fd.get('infantry'), lancer: fd.get('lancer'), marksman: fd.get('marksman'), screenshots: paths, attested: true });
+      const { error } = await sb.from('listings').insert({ fc: +fd.get('fc'), vip: +fd.get('vip'), power_m: +fd.get('power_m'), state: +fd.get('state'), login_type: fd.get('login_type'), price: +fd.get('price'), description: (fd.get('description') || '').trim(), gear_tier: fd.get('gear_tier'), charm: fd.get('charm'), chief_gear: fd.get('chief_gear'), pet_power: (fd.get('pet_power') || '').trim(), experts: (fd.get('experts') || '').trim(), island: (fd.get('island') || '').trim(), profile_shot: paths[0], gear_shot: paths[1], infantry: fd.get('infantry'), lancer: fd.get('lancer'), marksman: fd.get('marksman'), screenshots: paths, attested: true });
       if (!fail(error)) { toast(t('sent_review'), true); go('#/me'); }
     } else if (f.id === 'settings-form') {
       const patch = { seller_fee_pct: +fd.get('seller_fee_pct'), hold_days: +fd.get('hold_days'), payment_instructions: fd.get('payment_instructions').trim() };
