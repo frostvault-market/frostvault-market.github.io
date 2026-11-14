@@ -21,16 +21,18 @@ function validDeck(deck) {
 }
 
 function newGame(a, b, seed) {
-  const st = { seed: seed | 0, players: [], turn: 0, turnNo: 0, winner: null, log: [], events: [], ev: 0, uid: 1 };
+  const st = { gid: (seed | 0) ^ 0x5f3a, seed: seed | 0, players: [], turn: 0, turnNo: 0, winner: null, log: [], events: [], ev: 0, uid: 1 };
   [a, b].forEach(p => {
     const troops = shuffle(st, p.deck.filter(id => CARDS[id].kind === 'troop'));
     const tacs = shuffle(st, p.deck.filter(id => CARDS[id].kind === 'tactic'));
     const hand = troops.splice(0, 3).concat(tacs.splice(0, 1));   // اليد الأولى: 3 جنود + تكتيك
-    st.players.push({ name: String(p.name || 'جندي').slice(0, 16), hq: HQ_HP, supply: 0, maxSupply: 0,
+    st.players.push({ name: String(p.name || 'جندي').slice(0, 16), hq: p.hq || HQ_HP, maxHq: p.hq || HQ_HP, supply: 0, maxSupply: 0,
       deck: shuffle(st, troops.concat(tacs)), hand, board: Array(SLOTS).fill(null), traps: 0, fatigue: 0 });
   });
   st.turn = rnd(st) < 0.5 ? 0 : 1;
-  draw(st, 1 - st.turn); // اللاعب التاني بياخد كارت زيادة
+  draw(st, 1 - st.turn); // اللاعب التاني بياخد كارت زيادة + إمداد احتياطي
+  st.players[1 - st.turn].hand.push('tk_coin');
+  st.skipDraw = true;    // اللي بيبدأ مش بيسحب في أول دور
   log(st, `🎖️ ${st.players[st.turn].name} بيبدأ الهجوم`);
   startTurn(st);
   return st;
@@ -54,7 +56,7 @@ function startTurn(st) {
   const pi = st.turn, p = st.players[pi];
   p.maxSupply = Math.min(MAX_SUP, p.maxSupply + 1); p.supply = p.maxSupply;
   p.board.forEach(u => { if (!u) return; if (u.stun > 0) { u.canAtk = false; u.stun--; } else u.canAtk = true; });
-  draw(st, pi);
+  if (st.skipDraw) st.skipDraw = false; else draw(st, pi);
   evt(st, { k: 'turn', p: pi });
   checkWin(st);
 }
@@ -77,7 +79,7 @@ function damage(st, pi, s, n) {
 }
 function heal(st, pi, s, n) {
   const p = st.players[pi];
-  if (s < 0) { const h = Math.min(n, HQ_HP - p.hq); if (h > 0) { p.hq += h; evt(st, { k: 'heal', p: pi, s, n: h }); } return; }
+  if (s < 0) { const h = Math.min(n, (p.maxHq || HQ_HP) - p.hq); if (h > 0) { p.hq += h; evt(st, { k: 'heal', p: pi, s, n: h }); } return; }
   const u = p.board[s]; if (!u) return; const h = Math.min(n, u.maxHp - u.hp); if (h > 0) { u.hp += h; evt(st, { k: 'heal', p: pi, s, n: h }); }
 }
 
@@ -133,7 +135,7 @@ function apply(st, pi, a) {
     const tgt = ts >= 0 ? op.board[ts] : null;
     const d = combatDmg(u, tgt);
     u.canAtk = false;
-    evt(st, { k: 'atk', p: pi, s, tp: oi, ts });
+    evt(st, { k: 'atk', p: pi, s, tp: oi, ts, cid: u.id });
     log(st, `⚔️ ${CARDS[u.id].name} هاجم ${tgt ? CARDS[tgt.id].name : 'قيادة ' + op.name} (${d})`);
     damage(st, oi, ts, d);
     if (tgt && !has(u, 'ranged')) damage(st, pi, s, combatDmg(tgt, u));
@@ -146,7 +148,7 @@ function apply(st, pi, a) {
     if (c.cost > me.supply) return E('الإمداد مش كفاية ⛽');
     const emptySlots = me.board.map((u, s) => (u ? -1 : s)).filter(s => s >= 0);
     const slotOk = s => Number.isInteger(s) && s >= 0 && s < SLOTS && !me.board[s];
-    const pay = () => { me.hand.splice(h, 1); me.supply -= c.cost; log(st, `🃏 ${me.name} لعب ${c.name}`); };
+    const pay = () => { me.hand.splice(h, 1); me.supply -= c.cost; log(st, `🃏 ${me.name} لعب ${c.name}`); evt(st, { k: 'play', p: pi, s: -9, cid: id }); };
 
     if (c.kind === 'troop') {
       if (!slotOk(a.slot)) return E('اختار خانة فاضية');
@@ -187,7 +189,8 @@ function apply(st, pi, a) {
         pay(); damage(st, oi, a.ts, 3); draw(st, pi, 1); break;
       case 'x_wire':
         pay(); op.board.forEach(u => { if (u && CARDS[u.id].type === 'INF') u.stun = 1; }); break;
-      case 'x_convoy': pay(); me.supply += 2; break;
+      case 'x_convoy': pay(); me.supply += 3; break;
+      case 'tk_coin': pay(); me.supply += 1; break;
       case 'x_hospital':
         pay(); heal(st, pi, -1, 5); me.board.forEach((u, s) => u && heal(st, pi, s, 2)); break;
       default: return E('تكتيك مش معروف');

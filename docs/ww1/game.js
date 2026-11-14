@@ -80,27 +80,31 @@ function modal(html, onClick) {
 function showMenu() {
   leaveNet(); M = null;
   app().innerHTML = `<div class="screen menu">
+    <button class="mute" id="mute">${SFX.on() ? '🔊' : '🔇'}</button>
     <div class="logo"><div class="emblem">✠</div><h1>جبهة الكروت</h1><small>الحرب العالمية الأولى · 1914–1918</small></div>
     <div class="stats-row"><span>🪙 ${P.coins}</span><span>🏆 ${P.wins}</span><span>💀 ${P.losses}</span></div>
     <label class="namebox">اسم القائد <input id="pname" maxlength="16" value="${esc(P.name)}"></label>
-    <button class="big" data-go="ai">⚔️ معركة تدريب ضد الكمبيوتر</button>
     <button class="big gold" data-go="online">🌐 معركة أونلاين 1 ضد 1</button>
+    <button class="big" data-go="camp">🗺️ الحملة: ${CAMPAIGN[Math.min(P.camp || 0, CAMPAIGN.length - 1)].name} <small>(${P.camp || 0}/${CAMPAIGN.length})</small></button>
+    <button class="big" data-go="ai">⚔️ معركة تدريب ضد الكمبيوتر</button>
     <button class="big" data-go="deck">🎖️ تجهيز الكتيبة (الديك)</button>
     <button class="big" data-go="shop">📦 صناديق الإمداد</button>
     <button class="big" data-go="rules">📖 طريقة اللعب</button>
   </div>`;
   $('#pname').onchange = e => { P.name = e.target.value.trim().slice(0, 16) || P.name; save(); };
+  $('#mute').onclick = () => { $('#mute').textContent = SFX.toggle() ? '🔊' : '🔇'; };
 }
 document.addEventListener('click', e => {
   const g = e.target.closest('[data-go]'); if (!g) return;
   const n = $('#pname'); if (n) { P.name = n.value.trim().slice(0, 16) || P.name; save(); }
-  ({ ai: startAI, online: showOnline, deck: showDeck, shop: showShop, rules: showRules, menu: showMenu })[g.dataset.go]();
+  ({ ai: showPractice, camp: showCampaign, online: showOnline, deck: showDeck, shop: showShop, rules: showRules, menu: showMenu })[g.dataset.go]();
 });
 
 function showRules() {
   app().innerHTML = `<div class="screen rules"><div class="hdr"><button data-go="menu">→ رجوع</button><h2>طريقة اللعب</h2></div><div class="txt">
   <h3>الهدف</h3><p>دمّر <b>قيادة</b> العدو (${HQ_HP} صحة) قبل ما يدمّر قيادتك.</p>
   <h3>الكتيبة (الديك)</h3><p>بتدخل المعركة بـ <b>${DECK_TROOPS} كارت جنود ودبابات</b> و <b>${DECK_TACTICS} كروت تكتيكات</b>. أقصى نسختين من كل كارت (والأسطوري نسخة واحدة). بتجمّع كروت جديدة من صناديق الإمداد بالعملات اللي بتكسبها من المعارك.</p>
+  <h3>مين يبدأ؟</h3><p>القرعة بتحدد مين يبدأ. اللي بيبدأ مش بيسحب كارت في أول دور، والتاني بياخد كارت زيادة + كارت <b>⛽ إمداد احتياطي</b> عشان اللعبة تبقى عادلة.</p>
   <h3>الدور</h3><p>كل دور بتاخد <b>⛽ إمداد</b> بيزيد 1 كل دور لحد 10، وبتسحب كارت. انزل جنود في الخانات الفاضية (5 خانات) والعب تكتيكات، وبعدين هاجم بوحداتك. الوحدة الجديدة مش بتهاجم غير الدور الجاي (إلا لو عندها ⚡ هجوم خاطف). كل دور ليه وقت 75 ثانية في الأونلاين.</p>
   <h3>القتال</h3><p>على كل وحدة: <b style="color:#d9a03b">الدايرة الدهبي = الضرر ⚔️</b>، <b style="color:#e05a4a">الدايرة الحمرا = الصحة ❤️</b>، والمربع الرمادي = الدرع 🛡️. لما وحدة تهاجم وحدة، الاتنين بيضربوا بعض (إلا لو المهاجم 🎯 بعيد المدى). لو العدو عنده وحدة <b>🧱 متحصّنة</b> لازم تهاجمها الأول.</p>
   <h3>حجر-ورقة-مقص</h3><ul>
@@ -109,7 +113,8 @@ function showRules() {
    <li><b>💢 مضاد الأفراد</b> (الرشاشات، قاذف اللهب، مارك 4 أنثى) ضرره ×2 على المشاة.</li>
    <li><b>🔍 القنّاص والمدفع الدقيق</b> بيتخطّوا التحصين، و<b>🏚️ الحصار</b> ضرره ×2 على القيادة.</li></ul>
   <h3>التكتيكات</h3><p>مظلّيين، قصف بعيد، غارة قاذفات، ألغام مخفية، خنادق، مدافع محصّنة، غاز، أسلاك شائكة، استطلاع، قافلة إمدادات ومستشفى ميداني.</p>
-  <h3>الأونلاين</h3><p>واحد يعمل <b>أوضة</b> وياخد كود من 5 حروف ويبعته لصاحبه، والتاني يكتب الكود ويدخل. الاتصال مباشر بين التليفونين.</p>
+  <h3>الحملة</h3><p>9 معارك حقيقية بالترتيب من مونس 1914 لأميان 1918. كل معركة بتكسبها بتفتح اللي بعدها وبتديك عملات وكارت جديد.</p>
+  <h3>الأونلاين</h3><p>"دوّر على خصم" بيوصّلك بأي حد بيدوّر في نفس الوقت. أو واحد يعمل <b>أوضة</b> وياخد كود من 5 حروف ويبعته لصاحبه، والتاني يكتب الكود ويدخل. الاتصال مباشر بين التليفونين.</p>
   <h3>ملاحظة تاريخية</h3><p>الـRPG ماكانش موجود في الحرب العالمية الأولى (اتعمل في الحرب التانية)، فبدله اللعبة فيها الأسلحة الحقيقية اللي استخدموها ضد الدبابات وقتها. والمظلّيين كانوا خطة أمريكية لسنة 1918 الحرب خلصت قبل تنفيذها.</p>
   </div></div>`;
 }
@@ -146,6 +151,7 @@ function openPack() {
     got.push({ c, dupe, isNew: n === 0 });
   }
   P.coins += refund; save();
+  SFX.play('pack');
   showShop();
   $('#crate').classList.add('open');
   $('#reveal').innerHTML = got.map((g, i) => `<div class="flip" style="animation-delay:${i * 0.25}s">${cardHTML(g.c)}${g.isNew ? '<i class="new">جديد!</i>' : ''}${g.dupe ? '<i class="dup">+20 🪙</i>' : ''}</div>`).join('');
@@ -162,6 +168,7 @@ function renderDeck() {
       <button id="dsave" class="gold" ${validDeck(draft) ? '' : 'disabled'}>حفظ</button></div>
     <div class="deckbar"><span class="${tr === DECK_TROOPS ? 'ok' : ''}">🪖 جنود ${tr}/${DECK_TROOPS}</span><span class="${tc === DECK_TACTICS ? 'ok' : ''}">🎴 تكتيكات ${tc}/${DECK_TACTICS}</span></div>
     <div class="tabs"><button data-tab="troop" class="${deckTab === 'troop' ? 'on' : ''}">جنود ودبابات</button><button data-tab="tactic" class="${deckTab === 'tactic' ? 'on' : ''}">تكتيكات</button></div>
+    <div class="row2"><button id="dauto">⚡ كمّل تلقائي</button><button id="dclear">🗑️ فضّي</button><button id="dstart">↩️ الأساسية</button></div>
     <p class="muted center">دوس على كارت عشان تشوف تفاصيله وتضيفه أو تشيله.</p>
     <div class="grid">${list.map(c => {
       const own = P.owned[c.id] || 0, inD = cnt[c.id] || 0;
@@ -169,8 +176,29 @@ function renderDeck() {
     }).join('')}</div></div>`;
   $('#dback').onclick = () => { if (draft.join() !== P.deck.join() && !confirm('تخرج من غير حفظ؟')) return; showMenu(); };
   $('#dsave').onclick = () => { P.deck = draft.slice(); save(); toast('✅ الكتيبة اتحفظت'); };
+  $('#dauto').onclick = () => { autoFill(); renderDeck(); };
+  $('#dclear').onclick = () => { draft = []; renderDeck(); };
+  $('#dstart').onclick = () => { draft = STARTER_DECK.filter(id => P.owned[id]); autoFill(); renderDeck(); };
   document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { deckTab = b.dataset.tab; renderDeck(); });
   document.querySelectorAll('[data-card]').forEach(el => el.onclick = () => deckCardModal(el.dataset.card));
+}
+function autoFill() {
+  const rank = { legendary: 4, epic: 3, rare: 2, common: 1 };
+  for (const [kind, need] of [['troop', DECK_TROOPS], ['tactic', DECK_TACTICS]]) {
+    const cnt = {}; draft.forEach(id => cnt[id] = (cnt[id] || 0) + 1);
+    let have = draft.filter(id => CARDS[id].kind === kind).length;
+    const cands = Object.keys(P.owned).filter(id => CARDS[id] && CARDS[id].kind === kind)
+      .sort((a, b) => (rank[CARDS[b].rarity] - rank[CARDS[a].rarity]) || (Math.random() - 0.5));
+    // منحنى تكلفة معقول: مش أكتر من 4 كروت تمنها 5 أو أكتر
+    let heavy = draft.filter(id => CARDS[id].kind === 'troop' && CARDS[id].cost >= 5).length;
+    for (let pass = 0; pass < 2 && have < need; pass++) for (const id of cands) {
+      if (have >= need) break;
+      const lim = Math.min(P.owned[id], maxCopies(id));
+      if ((cnt[id] || 0) >= (pass === 0 ? Math.min(1, lim) : lim)) continue;
+      if (kind === 'troop' && CARDS[id].cost >= 5 && heavy >= 4) continue;
+      draft.push(id); cnt[id] = (cnt[id] || 0) + 1; have++; if (CARDS[id].cost >= 5 && kind === 'troop') heavy++;
+    }
+  }
 }
 function deckCardModal(id) {
   const c = CARDS[id], own = P.owned[id] || 0;
@@ -189,23 +217,51 @@ function deckCardModal(id) {
 }
 
 // ---------- المعركة ----------
-let M = null; // { st, me, mode:'ai'|'host'|'guest', sel, lastEv, deadline, rewarded }
+let M = null; // { st, me, mode:'ai'|'host'|'guest', level, camp, sel, lastEv, deadline, rewarded }
 const TURN_MS = 75000;
+const LEVELS = [{ n: 'سهل', d: 'مجنّد جديد بيغلط كتير', prize: 40 }, { n: 'متوسط', d: 'ضابط عارف شغله', prize: 60 }, { n: 'صعب', d: 'جنرال بيحسب كل حركة', prize: 90 }];
+const FOES = ['الجنرال فون كلوك', 'المارشال فوش', 'الجنرال هيج', 'الجنرال لودندورف', 'الجنرال بيرشينج', 'المارشال جوفر', 'الجنرال بروسيلوف', 'الجنرال كادورنا'];
 
-function startAI() {
+function randomDeck() {
   const pool = Object.values(CARDS).filter(c => !c.token);
-  // ديك الكمبيوتر: عشوائي ومتوازن
   const pick = (kind, n) => { const out = [], cnt = {}; const L = pool.filter(c => c.kind === kind);
     while (out.length < n) { const c = L[Math.floor(Math.random() * L.length)]; if (c.kind === 'troop' && c.cost >= 6 && Math.random() < 0.6) continue;
       if ((cnt[c.id] || 0) < maxCopies(c.id)) { cnt[c.id] = (cnt[c.id] || 0) + 1; out.push(c.id); } } return out; };
-  const aiDeck = pick('troop', DECK_TROOPS).concat(pick('tactic', DECK_TACTICS));
-  const names = ['الجنرال فون كلوك', 'المارشال فوش', 'الجنرال هيج', 'الجنرال لودندورف', 'الجنرال بيرشينج'];
-  const st = newGame({ name: P.name, deck: P.deck }, { name: names[Math.floor(Math.random() * names.length)], deck: aiDeck }, (Math.random() * 2 ** 31) | 0);
-  beginMatch('ai', st, 0);
+  return pick('troop', DECK_TROOPS).concat(pick('tactic', DECK_TACTICS));
 }
-function beginMatch(mode, st, me) {
-  M = { st, me, mode, sel: null, lastEv: 0, deadline: Date.now() + TURN_MS, lastTurn: st.turnNo, rewarded: false };
+function showPractice() {
+  modal(`<h3>معركة تدريب</h3><p class="muted">اختار مستوى الخصم:</p><div class="col">${LEVELS.map((l, i) =>
+    `<button data-lv="${i}" class="${i === 1 ? 'gold' : ''}">${['🟢', '🟡', '🔴'][i]} ${l.n}<br><small>${l.d} · المكسب ${l.prize} 🪙</small></button>`).join('')}</div>`, (e, m) => {
+    const b = e.target.closest('[data-lv]'); if (!b) return; m.remove(); P.lastLevel = +b.dataset.lv; save(); startAI(+b.dataset.lv);
+  });
+}
+function startAI(level = 1, camp = null) {
+  let foe = FOES[Math.floor(Math.random() * FOES.length)], deck = randomDeck(), hq;
+  if (camp != null) { const b = CAMPAIGN[camp]; foe = b.foe; deck = b.deck.slice(); hq = b.hq; level = b.level; }
+  const st = newGame({ name: P.name, deck: P.deck }, { name: foe, deck, hq }, (Math.random() * 2 ** 31) | 0);
+  beginMatch('ai', st, 0, { level, camp });
+  if (!P.tut) showTutorial();
+}
+function beginMatch(mode, st, me, opt = {}) {
+  document.querySelectorAll('.modal').forEach(m => m.remove());
+  M = { st, me, mode, level: opt.level ?? 1, camp: opt.camp ?? null, sel: null, lastEv: 0, deadline: Date.now() + TURN_MS, lastTurn: st.turnNo, rewarded: false, rm: [false, false] };
   renderMatch(); afterChange();
+}
+
+const TUT = [
+  ['🎯', 'الهدف', 'دمّر <b>قيادة العدو 🏰</b> فوق قبل ما يدمّر <b>قيادتك ⛺</b> تحت.'],
+  ['⛽', 'الإمداد', 'كل كارت ليه تمن (الرقم في الدايرة الزرقا). الإمداد بيزيد 1 كل دور لحد 10. الكروت اللي تقدر تلعبها بتنوّر أخضر.'],
+  ['🃏', 'نزّل وحداتك', 'دوس على كارت من إيدك، وبعدين دوس على خانة فاضية عندك. التكتيكات: دوس عليها وبعدين على الهدف أو على زرار <b>استخدم</b>.'],
+  ['⚔️', 'الهجوم', 'الوحدات اللي بتنوّر أخضر جاهزة: دوس عليها وبعدين على الهدف اللي بينوّر أحمر. <b style="color:#b8862b">الدهبي = ضرر</b>، <b style="color:#a33a2a">الأحمر = صحة</b>، <b style="color:#55606a">الرمادي = درع</b>.'],
+  ['🧨', 'اعرف عدوك', '<b>🧨 مضاد الدروع</b> بيكسّر الدبابات، <b>💢 مضاد الأفراد</b> بيحصد المشاة، و<b>🧱 المتحصّن</b> لازم يتضرب الأول. دوس ℹ️ على أي كارت تعرف تفاصيله. بالتوفيق يا قائد!'],
+];
+function showTutorial(i = 0) {
+  const [e, t, s] = TUT[i];
+  modal(`<div class="tut"><div class="big-emo">${e}</div><h3>${t}</h3><p>${s}</p><div class="dots">${TUT.map((_, j) => `<i class="${j === i ? 'on' : ''}"></i>`).join('')}</div>
+    <div class="row"><button data-m="skip">تخطّي</button><button data-m="next" class="gold">${i < TUT.length - 1 ? 'التالي ←' : 'يلا بينا ⚔️'}</button></div></div>`, (ev, m) => {
+    const b = ev.target.closest('[data-m]'); if (!b) return; m.remove();
+    if (b.dataset.m === 'next' && i < TUT.length - 1) showTutorial(i + 1); else { P.tut = 1; save(); }
+  });
 }
 
 function act(a) {
@@ -226,7 +282,7 @@ function runAI() {
   M.aiBusy = true; const myM = M;
   const step = () => {
     if (M !== myM || M.st.winner != null) { myM.aiBusy = false; return; }
-    const a = aiPick(M.st, 1 - M.me);
+    const a = aiPick(M.st, 1 - M.me, M.level);
     const r = apply(M.st, 1 - M.me, a);
     if (!r.ok) apply(M.st, 1 - M.me, { t: 'end' });
     renderMatch();
@@ -283,15 +339,19 @@ function renderMatch() {
         <button id="info">ℹ️</button><button id="cancel">✖</button></div>`;
     }
   }
+  if (!detail && myTurn && (P.wins + P.losses) < 3) {
+    const canPlay = A.hand.some(id => CARDS[id].cost <= A.supply), canAtk = A.board.some((u, s) => u && attackTargets(st, me, s).length);
+    detail = `<div class="dtext hint">💡 ${canPlay ? 'دوس على كارت منوّر أخضر في إيدك عشان تلعبه' : canAtk ? 'دوس على وحدة منوّرة أخضر عشان تهاجم بيها' : 'خلاص كده، دوس "إنهاء الدور"'}</div><div class="dbtns"><button id="logbtn">📜</button></div>`;
+  }
   if (!detail) detail = `<div class="dtext log">${esc(st.log[st.log.length - 1] || '')}</div><div class="dbtns"><button id="logbtn">📜</button></div>`;
 
   app().innerHTML = `<div class="match ${myTurn ? 'myturn' : ''}">
-    <div class="bar top"><button id="mmenu">☰</button><span class="pname">${esc(B.name)}</span>
+    <div class="bar top"><button id="mmenu">☰</button>${M.mode !== 'ai' ? '<button id="emote">💬</button>' : ''}<span class="pname">${esc(B.name)}</span>
       <span title="كروت في إيده">🃏${B.hand.length}</span><span title="الديك">📚${B.deck.length}</span>${B.traps ? `<span title="ألغام مزروعة">⚠️${B.traps}</span>` : ''}
       <span class="sup">⛽${B.supply}/${B.maxSupply}</span></div>
     <div class="hq enemy ${T.has(op + ':-1') ? 'tgt' : ''}" data-p="${op}" data-s="-1"><span class="hqic">🏰</span><span class="hqhp">${B.hq}</span><span class="hqlbl">قيادة العدو</span></div>
     <div class="board enemy">${boardHTML(op, T)}</div>
-    <div class="nomans"><span id="turnlbl">${st.winner != null ? 'انتهت المعركة' : myTurn ? '🟢 دورك' : '⏳ دور الخصم'}</span><span id="timer"></span></div>
+    <div class="nomans">${M.camp != null ? `<span class="camplbl">🗺️ ${CAMPAIGN[M.camp].name}</span>` : M.mode === 'ai' ? `<span class="camplbl">${LEVELS[M.level].n}</span>` : ''}<span id="turnlbl">${st.winner != null ? 'انتهت المعركة' : myTurn ? '🟢 دورك' : '⏳ دور الخصم'}</span><span id="timer"></span></div>
     <div class="board mine">${boardHTML(me, T)}</div>
     <div class="hq mine" data-p="${me}" data-s="-1"><span class="hqic">⛺</span><span class="hqhp">${A.hq}</span><span class="hqlbl">قيادتك</span>
       ${A.traps ? `<span>⚠️${A.traps}</span>` : ''}<span class="pips">${pips(A)}</span><span class="sup">⛽${A.supply}/${A.maxSupply}</span><span>📚${A.deck.length}</span></div>
@@ -310,6 +370,7 @@ function renderMatch() {
 function bindMatch(T) {
   const st = M.st, me = M.me;
   $('#mmenu').onclick = matchMenu;
+  const em = $('#emote'); if (em) em.onclick = emoteMenu;
   $('#endturn').onclick = () => act({ t: 'end' });
   const c = $('#cancel'); if (c) c.onclick = () => { M.sel = null; renderMatch(); };
   const u = $('#use'); if (u) u.onclick = () => act({ t: 'play', h: M.sel.h });
@@ -343,8 +404,22 @@ function animateEvents() {
   const evs = M.st.events.filter(e => e.id > M.lastEv);
   if (!evs.length) return;
   M.lastEv = evs[evs.length - 1].id;
+  const snd = new Set();
+  evs.forEach(e => {
+    const c = e.cid && CARDS[e.cid];
+    if (e.k === 'turn' && e.p === M.me && M.st.winner == null) snd.add('bugle');
+    if (e.k === 'atk') snd.add(c.type === 'GUN' ? 'boom' : c.type === 'ARM' ? 'clank' : c.kw.includes('antiInf') ? 'mg' : 'shot');
+    if (e.k === 'spawn') snd.add(CARDS[M.st.players[e.p].board[e.s]?.id]?.type === 'ARM' ? 'clank' : 'thud');
+    if (e.k === 'play') snd.add(['x_bomber', 'x_ace', 'x_recon', 'x_para'].includes(e.cid) ? 'plane' : e.cid === 'x_barrage' ? 'boom' : 'card');
+    if (e.k === 'die') snd.add('boom');
+    if (e.k === 'heal') snd.add('heal');
+    if (e.k === 'block') snd.add('block');
+    if (e.k === 'dmg' && e.s < 0) navigator.vibrate && e.p === M.me && navigator.vibrate(60);
+  });
+  [...snd].slice(0, 3).forEach((n, i) => setTimeout(() => SFX.play(n), i * 120));
   evs.forEach((e, i) => {
-    if (e.k === 'turn') { if (e.p === M.me && M.st.winner == null) { banner('دورك! ⚔️'); navigator.vibrate && navigator.vibrate(40); } return; }
+    if (e.k === 'play') return;
+    if (e.k === 'turn') { if (e.p === M.me && M.st.winner == null && !document.querySelector('.modal')) { banner('دورك! ⚔️'); navigator.vibrate && navigator.vibrate(40); } return; }
     const el = document.querySelector(`[data-p="${e.p}"][data-s="${e.s}"]`); if (!el) return;
     if (e.k === 'atk') { const u = el.querySelector('.unit'); u && u.classList.add(e.p === M.me ? 'lunge-up' : 'lunge-down'); return; }
     if (e.k === 'spawn') { const u = el.querySelector('.unit'); u && u.classList.add('drop'); return; }
@@ -368,30 +443,87 @@ function tick() {
 setInterval(tick, 500);
 
 function matchMenu() {
-  modal(`<h3>القائمة</h3><div class="col"><button data-m="rules">📖 طريقة اللعب</button><button data-m="quit" class="red">🏳️ استسلام والخروج</button><button data-m="x">رجوع للمعركة</button></div>`, (e, m) => {
+  modal(`<h3>القائمة</h3><div class="col"><button data-m="tut">🎓 الشرح السريع</button><button data-m="rules">📖 طريقة اللعب</button>
+    <button data-m="snd">${SFX.on() ? '🔊 الصوت شغّال' : '🔇 الصوت مقفول'}</button>
+    <button data-m="quit" class="red">🏳️ استسلام والخروج</button><button data-m="x">رجوع للمعركة</button></div>`, (e, m) => {
     const b = e.target.closest('[data-m]'); if (!b) return; m.remove();
-    if (b.dataset.m === 'quit') { if (M && M.st.winner == null) act({ t: 'concede' }); if (M && M.mode === 'guest') setTimeout(() => { if (M && M.st.winner == null) { M.st.winner = 1 - M.me; gameOver(); } }, 1500); }
-    if (b.dataset.m === 'rules') { const keep = M; showRules(); $('.rules .hdr button').removeAttribute('data-go'); $('.rules .hdr button').onclick = () => { M = keep; renderMatch(); }; }
+    const k = b.dataset.m;
+    if (k === 'snd') { SFX.toggle(); matchMenu(); }
+    if (k === 'tut') showTutorial();
+    if (k === 'quit') {
+      if (M && M.st.winner == null) act({ t: 'concede' });
+      else return showMenu();
+      if (M && M.mode === 'guest') setTimeout(() => { if (M && M.st.winner == null) { M.st.winner = 1 - M.me; renderMatch(); } }, 1500);
+    }
+    if (k === 'rules') { const keep = M; showRules(); $('.rules .hdr button').removeAttribute('data-go'); $('.rules .hdr button').onclick = () => { M = keep; renderMatch(); }; }
   });
 }
 
 function gameOver() {
   if (M.rewarded) return; M.rewarded = true;
   const win = M.st.winner === M.me;
-  const prize = win ? (M.mode === 'ai' ? 60 : 120) : 25;
+  let prize = win ? (M.mode === 'ai' ? LEVELS[M.level].prize : 120) : 25, extra = '';
+  if (M.camp != null && win) {
+    const b = CAMPAIGN[M.camp];
+    if (M.camp === (P.camp || 0)) {
+      P.camp = M.camp + 1; prize = b.reward.coins;
+      if (b.reward.card) {
+        const id = b.reward.card, n = P.owned[id] || 0;
+        if (n < maxCopies(id)) { P.owned[id] = n + 1; extra = `<p>🎁 كارت جديد:</p><div class="mcard">${cardHTML(CARDS[id])}</div>`; }
+        else { prize += 50; }
+      }
+      if (P.camp >= CAMPAIGN.length) extra += '<p>🎖️ خلّصت الحملة كلها! الحرب انتهت في 11 نوفمبر 1918.</p>';
+    } else prize = 40;
+  }
   P.coins += prize; win ? P.wins++ : P.losses++; save();
-  setTimeout(() => modal(`<div class="result ${win ? 'win' : 'lose'}"><div class="big-emo">${win ? '🏆' : '💀'}</div><h2>${win ? 'نصر!' : 'هزيمة'}</h2>
-    <p>${win ? 'قيادة العدو سقطت.' : 'قيادتك سقطت.'}</p><p>+${prize} 🪙</p>
-    <div class="col">${M.mode === 'ai' ? '<button data-m="again" class="gold">معركة تانية</button>' : ''}<button data-m="menu">القائمة الرئيسية</button></div></div>`, (e, m) => {
-      const b = e.target.closest('[data-m]'); if (!b) return; m.remove();
-      b.dataset.m === 'again' ? startAI() : showMenu();
-    }), 900);
+  setTimeout(() => SFX.play(win ? 'win' : 'lose'), 700);
+  const nextCamp = M.camp != null && win && M.camp + 1 < CAMPAIGN.length;
+  const btns = M.mode === 'ai'
+    ? (M.camp != null ? (nextCamp ? '<button data-m="next" class="gold">المعركة الجاية ⚔️</button>' : '') + `<button data-m="retry" class="${win ? '' : 'gold'}">🔁 العب تاني</button><button data-m="camp">🗺️ الحملة</button>`
+      : '<button data-m="again" class="gold">معركة تانية</button>')
+    : '<button data-m="rematch" class="gold">🔁 إعادة مع نفس الخصم</button>';
+  setTimeout(() => { if (!M || M.st.winner == null) return; modal(`<div class="result ${win ? 'win' : 'lose'}"><div class="big-emo">${win ? '🏆' : '💀'}</div><h2>${win ? 'نصر!' : 'هزيمة'}</h2>
+    <p>${win ? 'قيادة العدو سقطت.' : 'قيادتك سقطت.'}</p><p>+${prize} 🪙</p>${extra}
+    <div class="col">${btns}<button data-m="menu">القائمة الرئيسية</button></div></div>`, (e, m) => {
+      const b = e.target.closest('[data-m]'); if (!b) return;
+      const k = b.dataset.m;
+      if (k === 'rematch') { b.disabled = true; b.textContent = '⏳ مستني الخصم يوافق...'; askRematch(); return; }
+      m.remove();
+      if (k === 'again') startAI(M.level);
+      else if (k === 'retry') startAI(M.level, M.camp);
+      else if (k === 'next') startAI(1, M.camp + 1);
+      else if (k === 'camp') showCampaign();
+      else showMenu();
+    }); }, 900);
+}
+
+// ---------- الحملة ----------
+function showCampaign() {
+  leaveNet(); M = null;
+  const done = P.camp || 0;
+  app().innerHTML = `<div class="screen camp"><div class="hdr"><button data-go="menu">→ رجوع</button><h2>الحملة 1914–1918</h2><span>${done}/${CAMPAIGN.length}</span></div>
+    <div class="timeline">${CAMPAIGN.map((b, i) => {
+      const st = i < done ? 'done' : i === done ? 'next' : 'lock';
+      return `<div class="battle ${st}" data-b="${i}"><div class="yr">${b.year}</div><div class="bi"><b>${b.name}</b><small>ضد ${b.foe} · قيادته ${b.hq} · ${LEVELS[b.level].n}</small>
+        <small>🎁 ${b.reward.coins} 🪙${b.reward.card ? ' + ' + CARDS[b.reward.card].name : ''}</small></div><div class="bs">${st === 'done' ? '✅' : st === 'next' ? '⚔️' : '🔒'}</div></div>`;
+    }).join('')}</div></div>`;
+  document.querySelectorAll('[data-b]').forEach(el => el.onclick = () => {
+    const i = +el.dataset.b; if (i > done) return toast('🔒 كسّب المعركة اللي قبلها الأول');
+    const b = CAMPAIGN[i];
+    modal(`<div class="story"><div class="yr">${b.year}</div><h3>${b.name}</h3><p>${b.story}</p><p class="muted">الخصم: ${b.foe} · قيادته ${b.hq} صحة · مستوى ${LEVELS[b.level].n}</p>
+      ${b.reward.card && i >= done ? `<p>🎁 الجايزة:</p><div class="mcard">${cardHTML(CARDS[b.reward.card])}</div>` : ''}
+      <div class="row"><button data-m="go" class="gold">⚔️ ابدأ المعركة</button><button data-m="x">رجوع</button></div></div>`, (e, m) => {
+      const k = e.target.closest('[data-m]'); if (!k) return; m.remove(); if (k.dataset.m === 'go') startAI(1, i);
+    });
+  });
 }
 
 // ---------- الأونلاين (PeerJS: اتصال مباشر بين التليفونين) ----------
-const NET = { peer: null, conn: null };
+const NET = { peer: null, conn: null, guest: null };
 const PREFIX = 'ww1-front-cards-';
-// للتجربة على سيرفر محلي: ?peerhost=localhost:9000 (العادي: سيرفر PeerJS المجاني)
+const QSLOTS = 6;
+const EMOTES = ['👋 أهلًا يا قائد', '🫡 تحية عسكرية', '😮 ضربة حلوة!', '😂', '🤔 بفكّر...', '🔥 مش هتعدّي!'];
+// للتجربة على سيرفر محلي: ?peerhost=127.0.0.1:9000 (العادي: سيرفر PeerJS المجاني)
 function peerOpts() { const h = new URLSearchParams(location.search).get('peerhost'); if (!h) return { debug: 0 }; const [host, port] = h.split(':'); return { host, port: +port || 9000, path: '/', secure: false, debug: 0 }; }
 function loadPeer() {
   return new Promise((res, rej) => {
@@ -400,75 +532,183 @@ function loadPeer() {
     s.onload = res; s.onerror = () => rej(new Error('net')); document.head.appendChild(s);
   });
 }
-function leaveNet() { try { NET.conn && NET.conn.close(); } catch (e) {} try { NET.peer && NET.peer.destroy(); } catch (e) {} NET.peer = NET.conn = null; }
+function leaveNet() { NET.searching = false; try { NET.conn && NET.conn.close(); } catch (e) {} try { NET.peer && NET.peer.destroy(); } catch (e) {} NET.peer = NET.conn = NET.guest = null; }
 function genCode() { const A = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 5; i++) s += A[Math.floor(Math.random() * A.length)]; return s; }
 function netStatus(t) { const e = $('#netst'); if (e) e.innerHTML = t; }
+function netSend(o) { try { NET.conn && NET.conn.open && NET.conn.send(o); } catch (e) {} }
 
 function showOnline() {
+  leaveNet(); M = null;
   app().innerHTML = `<div class="screen online"><div class="hdr"><button data-go="menu">→ رجوع</button><h2>أونلاين 1 ضد 1</h2></div>
     <p class="center">هتدخل بالكتيبة المحفوظة عندك (${DECK_TROOPS} جنود + ${DECK_TACTICS} تكتيكات).</p>
-    <button class="big gold" id="host">🏕️ اعمل أوضة</button>
-    <div class="or">أو</div>
+    <button class="big gold" id="quick">🔎 دوّر على خصم عشوائي</button>
+    <div class="or">أو العب مع صاحبك</div>
+    <button class="big" id="host">🏕️ اعمل أوضة بكود</button>
     <div class="join"><input id="code" maxlength="5" placeholder="كود الأوضة" autocapitalize="characters"><button class="big" id="join">🚪 ادخل</button></div>
     <div id="netst" class="netst"></div></div>`;
-  $('#host').onclick = hostRoom;
+  $('#quick').onclick = quickMatch;
+  $('#host').onclick = () => hostRoom();
   $('#join').onclick = () => { const c = $('#code').value.trim().toUpperCase(); if (c.length !== 5) return toast('الكود 5 حروف'); joinRoom(c); };
 }
-async function hostRoom() {
-  leaveNet(); netStatus('⏳ بيجهّز الأوضة...');
+
+// صاحب الأوضة (هو اللي بيحسب المعركة)
+async function hostRoom(fixedId, onFail) {
+  if (!fixedId) leaveNet();
+  netStatus(fixedId ? '⏳ مستني خصم يدخل...' : '⏳ بيجهّز الأوضة...');
   try { await loadPeer(); } catch (e) { return netStatus('❌ مفيش اتصال بالنت'); }
-  const code = genCode(); const peer = new Peer(PREFIX + code, peerOpts()); NET.peer = peer;
-  peer.on('open', () => netStatus(`ابعت الكود ده لصاحبك:<div class="code">${code}</div><button id="share">📤 مشاركة</button><p>⏳ مستني الخصم يدخل...</p>`) || shareBtn(code));
-  peer.on('error', e => { if (e.type === 'unavailable-id') hostRoom(); else if (!M) netStatus('❌ مشكلة في الاتصال: ' + e.type); });
+  const code = genCode(); const peer = new Peer(fixedId || PREFIX + code, peerOpts()); NET.peer = peer;
+  peer.on('open', () => {
+    if (fixedId) netStatus(`<div class="radar">📡</div>⏳ مستني خصم يدخل...<p class="muted">لو مفيش حد بيدوّر دلوقتي، ابعت للصحاب يدوسوا "دوّر على خصم".</p>`);
+    else { netStatus(`ابعت الكود ده لصاحبك:<div class="code">${code}</div><button id="share">📤 مشاركة</button><p>⏳ مستني الخصم يدخل...</p>`); shareBtn(code); }
+  });
+  peer.on('error', e => {
+    if (e.type === 'unavailable-id') { if (fixedId) { peer.destroy(); onFail && onFail(); } else hostRoom(); }
+    else if (!M) netStatus('❌ مشكلة في الاتصال: ' + e.type);
+  });
+  peer.on('disconnected', () => { try { peer.reconnect(); } catch (e) {} });
   peer.on('connection', conn => {
-    if (NET.conn) { conn.on('open', () => conn.close()); return; }
+    if (NET.conn) { conn.on('open', () => { conn.send({ type: 'busy' }); setTimeout(() => conn.close(), 400); }); return; }
     NET.conn = conn;
     conn.on('data', d => hostData(d));
-    conn.on('close', () => peerLeft());
+    conn.on('close', () => { if (NET.conn === conn) peerLeft(); });
   });
 }
 function shareBtn(code) {
-  setTimeout(() => { const b = $('#share'); if (!b) return; b.onclick = () => {
-    const txt = `تعالى نلعب جبهة الكروت ⚔️ كود الأوضة: ${code}\n${location.href}`;
+  const b = $('#share'); if (!b) return; b.onclick = () => {
+    const txt = `تعالى نلعب جبهة الكروت ⚔️ كود الأوضة: ${code}\n${location.origin + location.pathname}`;
     if (navigator.share) navigator.share({ text: txt }).catch(() => {}); else { navigator.clipboard && navigator.clipboard.writeText(txt); toast('اتنسخ'); }
-  }; }, 0);
+  };
+}
+function hostNewGame() {
+  const g = NET.guest;
+  const st = newGame({ name: P.name, deck: P.deck }, { name: g.name, deck: g.deck }, (Math.random() * 2 ** 31) | 0);
+  beginMatch('host', st, 0);
 }
 function hostData(d) {
   if (!d || typeof d !== 'object') return;
   if (d.type === 'hello' && !M) {
-    if (!validDeck(d.deck)) { NET.conn.send({ type: 'err', msg: 'الكتيبة بتاعة الخصم مش صالحة' }); return; }
-    const st = newGame({ name: P.name, deck: P.deck }, { name: d.name, deck: d.deck }, (Math.random() * 2 ** 31) | 0);
-    beginMatch('host', st, 0);
+    if (!validDeck(d.deck)) { netSend({ type: 'err', msg: 'الكتيبة بتاعتك مش صالحة' }); return; }
+    NET.guest = { name: String(d.name || 'جندي').slice(0, 16), deck: d.deck };
+    SFX.play('bugle'); hostNewGame();
   } else if (d.type === 'act' && M && M.mode === 'host') {
     const r = apply(M.st, 1, d.a);
-    if (!r.ok) NET.conn.send({ type: 'err', msg: r.err }); else afterChange();
-  }
+    if (!r.ok) netSend({ type: 'err', msg: r.err }); else afterChange();
+  } else onCommonMsg(d);
 }
-function sendState() { if (NET.conn && NET.conn.open) NET.conn.send({ type: 'state', st: redact(M.st, 1), left: M.deadline - Date.now() }); }
+function sendState() { netSend({ type: 'state', st: redact(M.st, 1), left: M.deadline - Date.now() }); }
+
+// الضيف
+function guestData(d) {
+  if (!d || typeof d !== 'object') return;
+  if (d.type === 'state') {
+    if (!M || M.st.gid !== d.st.gid) {
+      document.querySelectorAll('.modal').forEach(m => m.remove());
+      M = { st: d.st, me: 1, mode: 'guest', level: 1, camp: null, sel: null, lastEv: 0, deadline: 0, rewarded: false, rm: [false, false] };
+    } else M.st = d.st;
+    M.deadline = Date.now() + d.left;
+    if (M.sel && M.sel.k === 'hand' && M.st.players[1].hand[M.sel.h] == null) M.sel = null;
+    renderMatch();
+  } else if (d.type === 'err') toast(d.msg);
+  else if (d.type === 'busy') netStatus('❌ الأوضة دي فيها معركة شغّالة');
+  else onCommonMsg(d);
+}
+function attachGuest(conn) {
+  NET.conn = conn;
+  conn.on('data', guestData);
+  conn.on('close', () => { if (NET.conn === conn) peerLeft(); });
+}
 async function joinRoom(code) {
   leaveNet(); netStatus('⏳ بيتصل...');
   try { await loadPeer(); } catch (e) { return netStatus('❌ مفيش اتصال بالنت'); }
   const peer = new Peer(peerOpts()); NET.peer = peer;
   peer.on('error', e => { if (!M) netStatus(e.type === 'peer-unavailable' ? '❌ الكود غلط أو الأوضة اتقفلت' : '❌ مشكلة في الاتصال: ' + e.type); });
   peer.on('open', () => {
-    const conn = peer.connect(PREFIX + code, { reliable: true }); NET.conn = conn;
+    const conn = peer.connect(PREFIX + code, { reliable: true }); attachGuest(conn);
     conn.on('open', () => { netStatus('✅ اتصلت! المعركة بتبدأ...'); conn.send({ type: 'hello', name: P.name, deck: P.deck }); });
-    conn.on('data', d => {
-      if (!d || typeof d !== 'object') return;
-      if (d.type === 'state') {
-        if (!M) { M = { st: d.st, me: 1, mode: 'guest', sel: null, lastEv: 0, deadline: 0, rewarded: false }; }
-        else { M.st = d.st; }
-        M.deadline = Date.now() + d.left;
-        if (M.sel && M.sel.k === 'hand' && !M.st.players[1].hand[M.sel.h]) M.sel = null;
-        renderMatch();
-      } else if (d.type === 'err') toast(d.msg);
-    });
-    conn.on('close', () => peerLeft());
   });
+}
+
+// البحث العشوائي: بيجرّب يدخل أوض الانتظار العامة، ولو مفيش حد بيستنى بيعمل واحدة
+async function quickMatch() {
+  leaveNet(); NET.searching = true;
+  netStatus('<div class="radar">📡</div>🔎 بيدوّر على خصم...');
+  try { await loadPeer(); } catch (e) { return netStatus('❌ مفيش اتصال بالنت'); }
+  const gp = new Peer(peerOpts()); NET.peer = gp;
+  const opened = await new Promise(res => { gp.on('open', () => res(true)); gp.on('error', () => res(false)); setTimeout(() => res(false), 10000); });
+  if (!opened) { if (NET.peer === gp) netStatus('❌ مش قادر يوصل لسيرفر الاتصال'); return; }
+  const free = [];
+  const order = [...Array(QSLOTS).keys()].map(i => i + 1);
+  for (const n of order) {
+    if (NET.peer !== gp || !NET.searching) return;
+    const r = await tryJoin(gp, PREFIX + 'q' + n);
+    if (r === 'ok') { NET.searching = false; return; }
+    if (r === 'none') free.push(n);
+  }
+  if (NET.peer !== gp || !NET.searching) return;
+  gp.destroy(); NET.peer = null;
+  const tryHost = () => {
+    if (!free.length) return netStatus('😕 كل أوض الانتظار مشغولة. جرّب تاني كمان شوية أو اعمل أوضة بكود.');
+    const n = free.shift(); hostRoom(PREFIX + 'q' + n, tryHost);
+  };
+  tryHost();
+}
+function tryJoin(peer, id) {
+  return new Promise(res => {
+    let done = false;
+    const fin = r => { if (done) return; done = true; peer.off('error', onErr); clearTimeout(to); res(r); };
+    const onErr = e => { if (e.type === 'peer-unavailable' && String(e.message || '').includes(id)) { try { conn.close(); } catch (x) {} fin('none'); } };
+    peer.on('error', onErr);
+    const conn = peer.connect(id, { reliable: true });
+    const to = setTimeout(() => { try { conn.close(); } catch (x) {} fin('busy'); }, 8000);
+    conn.on('open', () => conn.send({ type: 'hello', name: P.name, deck: P.deck }));
+    conn.on('data', d => {
+      if (!d || done) return;
+      if (d.type === 'busy') { conn.close(); fin('busy'); }
+      else if (d.type === 'state') { fin('ok'); attachGuest(conn); guestData(d); }
+    });
+    conn.on('close', () => fin('busy'));
+  });
+}
+
+// رسايل مشتركة: إيموجي وإعادة
+function onCommonMsg(d) {
+  if (d.type === 'emote' && M) showEmote(1 - M.me, EMOTES[d.i | 0] || '👋');
+  if (d.type === 'rematch' && M && M.st.winner != null) {
+    toast('🔁 الخصم عايز يلعب تاني');
+    M.rm[1 - M.me] = true;
+    if (M.mode === 'host' && M.rm[0] && M.rm[1]) hostNewGame();
+  }
+}
+function askRematch() {
+  if (!M) return; M.rm[M.me] = true; netSend({ type: 'rematch' });
+  if (M.mode === 'host' && M.rm[1]) hostNewGame();
+}
+function emoteMenu() {
+  modal(`<h3>رسالة سريعة</h3><div class="col">${EMOTES.map((t, i) => `<button data-e="${i}">${t}</button>`).join('')}</div>`, (e, m) => {
+    const b = e.target.closest('[data-e]'); if (!b) return; m.remove();
+    const now = Date.now(); if (now - (NET.lastEmote || 0) < 2500) return toast('استنى شوية'); NET.lastEmote = now;
+    netSend({ type: 'emote', i: +b.dataset.e }); showEmote(M.me, EMOTES[+b.dataset.e]);
+  });
+}
+function showEmote(p, t) {
+  const el = document.querySelector(p === M.me ? '.hq.mine' : '.bar.top'); if (!el) return;
+  const b = document.createElement('div'); b.className = 'emote ' + (p === M.me ? 'mine' : 'theirs'); b.textContent = t;
+  document.body.appendChild(b); const r = el.getBoundingClientRect(); b.style.top = (p === M.me ? r.top - 40 : r.bottom + 6) + 'px';
+  SFX.play('card'); setTimeout(() => b.remove(), 2800);
 }
 function peerLeft() {
   if (M && M.mode !== 'ai' && M.st.winner == null) { toast('📴 الخصم خرج من المعركة', 3000); M.st.winner = M.me; renderMatch(); }
+  else if (M && M.mode !== 'ai') toast('📴 الخصم خرج', 2500);
   else if (!M) netStatus('📴 الاتصال اتقطع');
+  NET.conn = null;
 }
 
+// مكافأة يومية
+function dailyBonus() {
+  const today = new Date().toDateString();
+  if (P.lastDaily === today) return;
+  const first = !P.lastDaily; P.lastDaily = today; P.coins += 50; save();
+  if (!first) setTimeout(() => toast('🎁 مكافأة اليوم: +50 🪙', 3000), 400);
+}
+dailyBonus();
 showMenu();
