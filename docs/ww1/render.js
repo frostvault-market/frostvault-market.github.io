@@ -314,7 +314,8 @@ const GFX = (() => {
     }
     const big = e.kind === 'hq';
     const r = e.kind === 'fortgun' ? 13 : big ? 26 : 19;
-    ctx.save(); ctx.translate(e.x, e.y);
+    const fl = flip ? Math.PI : 0; // للضيف: نعدل المبنى عشان العلم يبقى لفوق
+    ctx.save(); ctx.translate(e.x, e.y); ctx.rotate(fl);
     // أكياس رمل
     ctx.fillStyle = 'rgba(0,0,0,0.35)'; ctx.beginPath(); ctx.arc(2.5, 3, r + 6, 0, 7); ctx.fill();
     const n = big ? 34 : 24;
@@ -328,7 +329,7 @@ const GFX = (() => {
       ctx.strokeStyle = '#4a2618'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(8, 0); ctx.stroke();
       if (f < 0.6) { ctx.fillStyle = '#2a1d14'; ctx.beginPath(); ctx.arc(-6, 5, 5, 0, 7); ctx.fill(); ctx.fillStyle = '#5a4a3a'; ctx.fillRect(-9, 3, 2, 1); }
       // مدفع
-      ctx.save(); ctx.rotate(e.face); ctx.strokeStyle = '#1d1c18'; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(28, 0); ctx.stroke(); ctx.restore();
+      ctx.save(); ctx.rotate(e.face - fl); ctx.strokeStyle = '#1d1c18'; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(28, 0); ctx.stroke(); ctx.restore();
       // علم
       const fx = 12, fy = -20; ctx.strokeStyle = '#ddd'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(fx, fy + 10); ctx.lineTo(fx, fy - 6); ctx.stroke();
       ctx.fillStyle = C.flag; ctx.beginPath(); ctx.moveTo(fx, fy - 6); for (let i = 0; i <= 10; i++) ctx.lineTo(fx + i, fy - 6 + Math.sin(t * 6 + i * 0.6) * 1.2); for (let i = 10; i >= 0; i--) ctx.lineTo(fx + i, fy + Math.sin(t * 6 + i * 0.6) * 1.2); ctx.fill();
@@ -338,7 +339,7 @@ const GFX = (() => {
       ctx.fillStyle = g; ctx.beginPath(); for (let i = 0; i < 8; i++) { const a = i / 8 * 6.283 + 0.39; ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r); } ctx.closePath(); ctx.fill();
       ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 1; ctx.stroke();
       ctx.fillStyle = 'rgba(255,255,255,0.1)'; ctx.beginPath(); ctx.arc(-2, -2, r * 0.55, 0, 7); ctx.fill();
-      ctx.save(); ctx.rotate(e.face); ctx.fillStyle = '#151410'; ctx.fillRect(r * 0.55, -4, 4, 8);
+      ctx.save(); ctx.rotate(e.face - fl); ctx.fillStyle = '#151410'; ctx.fillRect(r * 0.55, -4, 4, 8);
       if (e.kind === 'fortgun') { ctx.strokeStyle = '#1d1c18'; ctx.lineWidth = 2.4; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(22, 0); ctx.stroke(); }
       ctx.restore();
       if (f < 0.5) { ctx.strokeStyle = 'rgba(30,25,20,0.8)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(-8, -6); ctx.lineTo(-2, 0); ctx.lineTo(-5, 7); ctx.moveTo(4, -9); ctx.lineTo(7, -2); ctx.stroke(); }

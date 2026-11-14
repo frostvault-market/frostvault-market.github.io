@@ -15,7 +15,7 @@ const utype = e => e.t === 's' ? 'S' : CARDS[e.card].type;
 
 function newSim(o) {
   // o: { map, players:[{name, deck, lv:{id:lvl}, hq}], seed }
-  const sim = { t: 0, left: MATCH_TIME, ot: false, map: MAPS[o.map], mapId: o.map, ents: [], nid: 1, fx: [], winner: null, crowns: [0, 0], seed: o.seed | 0, over: false };
+  const sim = { gid: o.seed | 0, t: 0, left: MATCH_TIME, ot: false, map: MAPS[o.map], mapId: o.map, ents: [], nid: 1, fx: [], winner: null, crowns: [0, 0], seed: o.seed | 0, over: false };
   sim.pl = o.players.map((p, i) => {
     const deck = p.deck.slice(); for (let k = deck.length - 1; k > 0; k--) { const j = Math.floor(srnd(sim) * (k + 1)); [deck[k], deck[j]] = [deck[j], deck[k]]; }
     return { name: String(p.name || 'جندي').slice(0, 16), sup: 5, hand: deck.splice(0, 4), queue: deck, lv: p.lv || {}, side: i, regen: p.regen || 1 };

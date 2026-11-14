@@ -15,7 +15,7 @@ function startBattle(o) {
       <div class="supbar"><div class="supfill" id="supfill"></div><div class="supcells">${'<i></i>'.repeat(MAX_SUPPLY)}</div><span id="supnum">⛽ 5</span></div></div>
   </div>`;
   GFX.init($('#cv'));
-  if (B.sim) setupMap(B.sim.mapId, B.sim.seed);
+  if (B.sim) setupMap(B.sim.mapId, B.sim.gid);
   $('#bmenu').onclick = battleMenu;
   const em = $('#emote'); if (em) em.onclick = emoteMenu;
   bindInput();
@@ -309,7 +309,7 @@ function sendSnap() {
     else if (x.t === 'p') e.push(['p', x.id, x.side, r(x.x0), r(x.y0), r(x.x), r(x.y), Math.round((x.at - s.t) * 1000), Math.round(x.dur * 1000), x.w]);
   });
   const p = s.pl[1];
-  netSend({ type: 'snap', g: s.seed, m: s.mapId, t: s.t, left: s.left, ot: s.ot, cr: s.crowns, w: s.winner, sup: p.sup, hand: p.hand, next: p.queue[0],
+  netSend({ type: 'snap', g: s.gid, m: s.mapId, t: s.t, left: s.left, ot: s.ot, cr: s.crowns, w: s.winner, sup: p.sup, hand: p.hand, next: p.queue[0],
     names: s.pl.map(x => x.name), fast: s.ot || s.left <= 60, e, fx: B.outFx.slice(-80) });
   B.outFx = [];
 }
