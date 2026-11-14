@@ -1,0 +1,3 @@
+{ "name": "جبهة الكروت", "short_name": "جبهة الكروت", "start_url": "./", "scope": "./", "display": "standalone",
+  "orientation": "portrait", "background_color": "#1d1d14", "theme_color": "#2a2a1c", "lang": "ar", "dir": "rtl",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }] }
