@@ -22,9 +22,12 @@ const SFX = (() => {
     o.connect(g).connect(c.destination); o.start(t); o.stop(t + dur);
   }
   const S = {
-    shot() { noise(0.12, 1800, 'highpass', 0.5); noise(0.18, 400, 'lowpass', 0.4); },
+    shot() { noise(0.08, 1800, 'highpass', 0.22); noise(0.12, 500, 'lowpass', 0.18); },
     mg() { for (let i = 0; i < 5; i++) noise(0.06, 1500, 'bandpass', 0.45, i * 0.07); },
     boom() { noise(0.9, 160, 'lowpass', 1.0); tone(90, 0.5, 'sine', 0.35, 0, 35); },
+    mg1() { for (let i = 0; i < 3; i++) noise(0.045, 1600, 'bandpass', 0.22, i * 0.06); },
+    cannon() { noise(0.35, 300, 'lowpass', 0.55); tone(110, 0.25, 'sine', 0.2, 0, 50); },
+    thump() { noise(0.4, 200, 'lowpass', 0.45); },
     thud() { tone(140, 0.18, 'sine', 0.3, 0, 60); noise(0.1, 600, 'lowpass', 0.2); },
     clank() { tone(220, 0.25, 'sawtooth', 0.06, 0, 110); noise(0.3, 300, 'lowpass', 0.3); },
     card() { noise(0.05, 3000, 'highpass', 0.15); },
