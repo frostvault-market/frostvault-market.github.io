@@ -121,3 +121,7 @@ input{font:inherit;padding:10px;border-radius:8px;border:2px solid #8a6d2f;backg
 .emote{position:fixed;left:50%;transform:translateX(-50%);background:#fff;color:#2a2416;padding:8px 14px;border-radius:16px;font-weight:800;z-index:70;box-shadow:0 4px 10px #0008;animation:fadein .2s;max-width:80%;text-align:center}
 .emote.theirs{background:#f9e3b0}
 .modal button small{font-weight:400;opacity:.8}
+.played{position:fixed;top:22%;left:50%;transform:translateX(-50%);z-index:55;display:flex;flex-direction:column;align-items:center;gap:4px;animation:playedin 1.7s both}
+.played small{background:#000a;padding:2px 10px;border-radius:8px;color:#f3d98a;font-weight:700}
+.played .card{transform:scale(1.35);transform-origin:top center;box-shadow:0 10px 30px #000}
+@keyframes playedin{0%{opacity:0;transform:translateX(-50%) scale(.6)}12%{opacity:1;transform:translateX(-50%) scale(1)}85%{opacity:1}100%{opacity:0}}

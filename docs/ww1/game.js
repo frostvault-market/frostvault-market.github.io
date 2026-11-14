@@ -417,6 +417,8 @@ function animateEvents() {
     if (e.k === 'dmg' && e.s < 0) navigator.vibrate && e.p === M.me && navigator.vibrate(60);
   });
   [...snd].slice(0, 3).forEach((n, i) => setTimeout(() => SFX.play(n), i * 120));
+  const oppPlays = evs.filter(e => e.k === 'play' && e.p !== M.me);
+  if (oppPlays.length) showPlayed(oppPlays[oppPlays.length - 1].cid);
   evs.forEach((e, i) => {
     if (e.k === 'play') return;
     if (e.k === 'turn') { if (e.p === M.me && M.st.winner == null && !document.querySelector('.modal')) { banner('دورك! ⚔️'); navigator.vibrate && navigator.vibrate(40); } return; }
@@ -429,6 +431,11 @@ function animateEvents() {
     el.appendChild(f); setTimeout(() => f.remove(), 1400);
     if (e.k === 'dmg' || e.k === 'die') { el.classList.add('shake'); setTimeout(() => el.classList.remove('shake'), 400); }
   });
+}
+function showPlayed(id) {
+  document.querySelectorAll('.played').forEach(x => x.remove());
+  const d = document.createElement('div'); d.className = 'played'; d.innerHTML = `<small>الخصم لعب</small>${cardHTML(CARDS[id])}`;
+  d.onclick = () => d.remove(); document.body.appendChild(d); setTimeout(() => d.remove(), 1700);
 }
 function banner(t) { const b = document.createElement('div'); b.className = 'banner'; b.textContent = t; document.body.appendChild(b); setTimeout(() => b.remove(), 1300); }
 
@@ -712,3 +719,4 @@ function dailyBonus() {
 }
 dailyBonus();
 showMenu();
+if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
