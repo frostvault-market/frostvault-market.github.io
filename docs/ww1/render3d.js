@@ -142,7 +142,7 @@ function horseLegGeo() { return geoCache.hleg || (geoCache.hleg = merge([box(1.2
 // ---------- الدبابات: موديلات مفصّلة (جنازير وعجل ومسامير وتمويه حسب الدولة) ----------
 const PAINT = {
   DE: { base: '#a8935c', blots: ['#5f6b3c', '#6e4f32', '#8a7a48'], lines: true },
-  UK: { base: '#6e5b3e', blots: ['#5c4c33', '#7a6646'], lines: false },
+  UK: { base: '#727046', blots: ['#5f6040', '#837a50', '#6a5c3e'], lines: false },
   FR: { base: '#8b8556', blots: ['#4f5a36', '#7a5a3a', '#b29a62'], lines: true },
   US: { base: '#6a6a48', blots: ['#55553a'], lines: false },
 };
@@ -205,9 +205,23 @@ function belt(b, L, H, z, y0, w = 3.6) {
   const s = new THREE.Shape(), r = H / 2; s.moveTo(-L / 2 + r, 0); s.lineTo(L / 2 - r, 0); s.absarc(L / 2 - r, r, r, -Math.PI / 2, Math.PI / 2); s.lineTo(-L / 2 + r, H); s.absarc(-L / 2 + r, r, r, Math.PI / 2, Math.PI * 1.5);
   const g = new THREE.ExtrudeGeometry(s, { depth: w, bevelEnabled: false, curveSegments: 10 }); g.translate(0, y0, z - w / 2); scaleUV(g, 0.12, 0.25);
   b.track.push(prep(g, W));
+  shoes(b, stadium(L, H, y0), z, w, 2);
 }
+// نعال الجنزير: قطع صغيرة على محيط الجنزير كله زي الدبابات الحقيقية
+function shoes(b, pts, z, w, step = 2.3) {
+  const n = pts.length; let cx = 0, cy = 0; pts.forEach(([x, y]) => { cx += x; cy += y; }); cx /= n; cy /= n;
+  for (let i = 0; i < n; i++) {
+    const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % n], L = Math.hypot(x2 - x1, y2 - y1), a = Math.atan2(y2 - y1, x2 - x1);
+    let nx = -Math.sin(a), ny = Math.cos(a); const mx = (x1 + x2) / 2, my = (y1 + y2) / 2; if ((mx - cx) * nx + (my - cy) * ny < 0) { nx = -nx; ny = -ny; }
+    const k = Math.max(1, Math.floor(L / step));
+    for (let j = 0; j < k; j++) { const t = (j + 0.5) / k, x = x1 + (x2 - x1) * t + nx * 0.45, y = y1 + (y2 - y1) * t + ny * 0.45;
+      b.track.push(box(step * 0.78, 0.75, w + 0.9, j % 2 ? 0x8a8478 : 0x9a9488, x, y, z, 0, 0, a)); }
+  }
+}
+function stadium(L, H, y0, seg = 6) { const r = H / 2, p = []; for (let i = 0; i <= seg; i++) { const a = -Math.PI / 2 + i / seg * Math.PI; p.push([L / 2 - r + Math.cos(a) * r, y0 + r + Math.sin(a) * r]); } for (let i = 0; i <= seg; i++) { const a = Math.PI / 2 + i / seg * Math.PI; p.push([-L / 2 + r + Math.cos(a) * r, y0 + r + Math.sin(a) * r]); } return p; }
 function scaleUV(g, su, sv) { const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv); }
 function rhombTrack(b, prof, z, w = 4) {
+  shoes(b, prof, z, w);
   const s = new THREE.Shape(); prof.forEach(([x, y], i) => i ? s.lineTo(x, y) : s.moveTo(x, y)); s.closePath();
   const g = new THREE.ExtrudeGeometry(s, { depth: w, bevelEnabled: true, bevelSize: 0.4, bevelThickness: 0.4, bevelSegments: 1 }); g.translate(0, 0, z - w / 2); scaleUV(g, 0.12, 0.25);
   b.track.push(prep(g, W));
