@@ -60,6 +60,23 @@ def({ id: 'stchamond', kind: 'troop', type: 'ARM', nat: 'FR', rarity: 'epic', co
 def({ id: 'a7v', kind: 'troop', type: 'ARM', nat: 'DE', rarity: 'legendary', cost: 7, atk: 5, hp: 9, armor: 2, kw: ['antiInf'], icon: 'tank',
   name: 'A7V العملاقة', en: 'A7V Sturmpanzerwagen', fact: 'الدبابة الألمانية الوحيدة اللي دخلت الخدمة؛ اتعمل منها حوالي 20 بس، بطاقم 18 فرد ومدفع 57 مم و6 رشاشات.' });
 
+
+// ---------- دبابات ألمانيا التجريبية والنادرة ----------
+def({ id: 'kwagen', kind: 'troop', type: 'ARM', nat: 'DE', rarity: 'legendary', cost: 9, atk: 6, hp: 12, armor: 2, kw: ['antiTank', 'siege'], icon: 'tank',
+  name: 'العملاقة K-Wagen', en: 'K-Wagen (Kolossal-Wagen)', fact: 'أكبر دبابة اتصممت في الحرب: حوالي 120 طن بطاقم أكتر من 20 فرد وأربع مدافع. اتبنى منها نموذجين ماكملوش قبل نهاية الحرب واتفككوا بعدها.' });
+def({ id: 'lk1', kind: 'troop', type: 'ARM', nat: 'DE', rarity: 'common', cost: 3, atk: 2, hp: 3, armor: 1, kw: ['charge', 'antiInf'], icon: 'light',
+  name: 'LK I الخفيفة', en: 'Leichter Kampfwagen I', fact: 'نموذج دبابة خفيفة ألمانية سنة 1918 مبني على شاسيه عربية، المحرك قدّام وفيها برج برشاش.' });
+def({ id: 'lk2', kind: 'troop', type: 'ARM', nat: 'DE', rarity: 'rare', cost: 4, atk: 3, hp: 4, armor: 1, icon: 'light',
+  name: 'LK II', en: 'Leichter Kampfwagen II', fact: 'نسخة محسّنة من LK I. ألمانيا طلبت منها المئات قبل نهاية الحرب، وبعدها السويد اشترت أجزاء منها وعملت منها دبابة Strv m/21.' });
+def({ id: 'lk3', kind: 'troop', type: 'ARM', nat: 'DE', rarity: 'rare', cost: 4, atk: 3, hp: 4, armor: 1, kw: ['antiInf'], icon: 'light',
+  name: 'LK III', en: 'Leichter Kampfwagen III', fact: 'آخر تطوير لسلسلة LK: المحرك ورا والبرج قدّام. الحرب خلصت قبل ما يتبني.' });
+def({ id: 'dw1', kind: 'troop', type: 'ARM', nat: 'DE', rarity: 'common', cost: 4, atk: 2, hp: 6, armor: 1, kw: ['antiInf'], icon: 'tank',
+  name: 'D.W. I التجريبية', en: 'D.W. I prototype', fact: 'من أول التجارب الألمانية لعربية مدرعة على جنازير قبل الـ A7V.' });
+def({ id: 'dw2', kind: 'troop', type: 'ARM', nat: 'DE', rarity: 'rare', cost: 5, atk: 3, hp: 7, armor: 2, kw: ['antiInf'], icon: 'tank',
+  name: 'D.W. II', en: 'D.W. II prototype', fact: 'نسخة أكبر وأتقل من التجربة الأولى، بجنازير بتلف حوالين الجسم زي الدبابات البريطانية.' });
+def({ id: 'gross', kind: 'troop', type: 'ARM', nat: 'DE', rarity: 'epic', cost: 5, atk: 4, hp: 7, armor: 2, kw: ['siege'], icon: 'tank',
+  name: 'جرّار المدفعية التقيل', en: 'Heavy artillery tractor', fact: 'ألمانيا استخدمت عربيات على جنازير (زي Überlandwagen المبنية على شاسيه الـ A7V) عشان تسحب المدافع وتنقل الإمدادات في الطين.' });
+
 // ---------- المدفعية ----------
 def({ id: 'stokes', kind: 'troop', type: 'GUN', nat: 'UK', rarity: 'common', cost: 2, atk: 2, hp: 2, kw: ['ranged'], icon: 'mortar',
   name: 'هاون ستوكس', en: 'Stokes Mortar', fact: 'هاون خفيف بيضرب من جوه الخندق لخندق العدو مباشرة.' });
