@@ -27,6 +27,13 @@ const RT = {
   mk4m:     { c: 6, n: 1, hp: 740, ar: 6, dmg: 48, cd: 1.6, r: 132, spd: 14, proj: 1, look: 'rhomb', w: 'cannon', pref: 'ARM' },
   ca1:      { c: 5, n: 1, hp: 700, ar: 5, dmg: 38, cd: 1.8, r: 122, spd: 15, sp: 18, proj: 1, look: 'box', w: 'cannon' },
   stchamond:{ c: 6, n: 1, hp: 720, ar: 5, dmg: 64, cd: 2.0, r: 150, spd: 13, proj: 1, look: 'long', w: 'cannon', pref: 'ARM' },
+  kwagen:   { c: 9, n: 1, hp: 1600, ar: 7, dmg: 42, cd: 1.5, r: 140, spd: 8, sp: 16, proj: 1, look: 'kwagen', w: 'cannon' },
+  lk1:      { c: 3, n: 1, hp: 380, ar: 3, dmg: 6, cd: 0.17, r: 95, spd: 36, look: 'lk1', w: 'mg', pref: 'INF' },
+  lk2:      { c: 4, n: 1, hp: 470, ar: 4, dmg: 30, cd: 1.3, r: 115, spd: 30, proj: 1, look: 'lk2', w: 'cannon' },
+  lk3:      { c: 4, n: 1, hp: 500, ar: 4, dmg: 7, cd: 0.16, r: 100, spd: 30, look: 'lk3', w: 'mg', pref: 'INF' },
+  dw1:      { c: 4, n: 1, hp: 640, ar: 4, dmg: 6, cd: 0.19, r: 95, spd: 13, look: 'dw1', w: 'mg', pref: 'INF' },
+  dw2:      { c: 5, n: 1, hp: 780, ar: 5, dmg: 7, cd: 0.17, r: 100, spd: 13, look: 'dw2', w: 'mg', pref: 'INF' },
+  gross:    { c: 5, n: 1, hp: 820, ar: 5, dmg: 42, cd: 1.7, r: 125, spd: 14, proj: 1, look: 'gross', w: 'cannon' },
   a7v:      { c: 8, n: 1, hp: 1300, ar: 6, dmg: 30, cd: 0.8, r: 130, spd: 11, sp: 14, proj: 1, look: 'a7v', w: 'cannon' },
 
   stokes:   { c: 3, n: 1, hp: 140, dmg: 44, cd: 2.4, r: 200, min: 50, spd: 16, sp: 24, proj: 1, look: 'mortar', w: 'mortar' },

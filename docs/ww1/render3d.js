@@ -139,71 +139,215 @@ function horseGeo() {
 }
 function horseLegGeo() { return geoCache.hleg || (geoCache.hleg = merge([box(1.2, 5.5, 1.2, 0x5e3e24, 0, -2.75, 0), box(1.4, 0.8, 1.4, 0x1e1a14, 0, -5.4, 0)])); }
 
-// ---------- الدبابات والعربيات ----------
-function camoParts(T, team, L, W, H, y0) {
-  if (team !== 'mine') return [];
-  const p = []; for (let i = 0; i < 5; i++) p.push(box(3 + (i % 2) * 2, 0.15, 2 + (i % 3), 0x7a6236, -L / 2 + 3 + i * (L - 6) / 5, y0 + H + 0.08, ((i * 7) % 5 - 2) * W / 7));
-  return p;
+// ---------- الدبابات: موديلات مفصّلة (جنازير وعجل ومسامير وتمويه حسب الدولة) ----------
+const PAINT = {
+  DE: { base: '#a8935c', blots: ['#5f6b3c', '#6e4f32', '#8a7a48'], lines: true },
+  UK: { base: '#6e5b3e', blots: ['#5c4c33', '#7a6646'], lines: false },
+  FR: { base: '#8b8556', blots: ['#4f5a36', '#7a5a3a', '#b29a62'], lines: true },
+  US: { base: '#6a6a48', blots: ['#55553a'], lines: false },
+};
+const camoCache = {};
+function camoTex(nat) {
+  if (camoCache[nat]) return camoCache[nat];
+  const P = PAINT[nat] || PAINT.UK, c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d');
+  let seed = nat.charCodeAt(0) * 97 + 13; const r = () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; };
+  g.fillStyle = P.base; g.fillRect(0, 0, 512, 512);
+  // بقع تمويه بأشكال غير منتظمة
+  for (let i = 0; i < 11; i++) {
+    const cx = r() * 512, cy = r() * 512, rad = 90 + r() * 90, n = 11; g.beginPath();
+    for (let k = 0; k <= n; k++) { const a = k / n * 6.283, rr = rad * (0.55 + r() * 0.6); const x = cx + Math.cos(a) * rr, y = cy + Math.sin(a) * rr * 0.7; k ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.closePath(); g.fillStyle = P.blots[i % P.blots.length]; g.fill();
+    if (P.lines) { g.strokeStyle = 'rgba(20,18,14,0.85)'; g.lineWidth = 5; g.stroke(); }
+  }
+  // صدأ ووسخ وخدوش
+  for (let i = 0; i < 2600; i++) { g.fillStyle = `rgba(${r() < 0.5 ? '40,30,20' : '200,190,160'},${0.05 + r() * 0.12})`; g.fillRect(r() * 512, r() * 512, 1 + r() * 3, 1 + r() * 3); }
+  for (let i = 0; i < 90; i++) { g.strokeStyle = `rgba(90,60,35,${0.15 + r() * 0.2})`; g.lineWidth = 1 + r() * 2; const x = r() * 512, y = r() * 512; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (r() - 0.5) * 6, y + 10 + r() * 30); g.stroke(); }
+  // ألواح ومسامير مرسومة
+  g.strokeStyle = 'rgba(25,22,18,0.45)'; g.lineWidth = 2; for (let x = 0; x < 512; x += 128) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, 512); g.stroke(); } for (let y = 0; y < 512; y += 170) { g.beginPath(); g.moveTo(0, y); g.lineTo(512, y); g.stroke(); }
+  g.fillStyle = 'rgba(30,26,20,0.5)'; for (let x = 6; x < 512; x += 128) for (let y = 8; y < 512; y += 16) { g.beginPath(); g.arc(x, y, 2, 0, 7); g.fill(); g.beginPath(); g.arc(x + 116, y, 2, 0, 7); g.fill(); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
+  return (camoCache[nat] = t);
 }
-function trackParts(L, W, H, profile) {
-  const p = [];
-  [-1, 1].forEach(s => {
-    if (profile) {
-      const sh = new THREE.Shape(); profile.forEach(([x, y], i) => i ? sh.lineTo(x, y) : sh.moveTo(x, y));
-      const g = new THREE.ExtrudeGeometry(sh, { depth: 3.6, bevelEnabled: false });
-      p.push(prep(g, 0x2e2c25, 0, 0, s * W / 2 - (s > 0 ? 3.6 : 0)));
-      const g2 = new THREE.ExtrudeGeometry(sh, { depth: 0.4, bevelEnabled: false });
-      p.push(prep(g2, 0x4e4a3e, 0, 0, s > 0 ? W / 2 + 0.05 : -W / 2 - 0.45, 0, 0, 0, 0.85, 0.75, 1));
-    } else {
-      p.push(box(L, H, 3.6, 0x2b2a24, 0, H / 2 + 0.3, s * (W / 2 - 1.8)));
-      for (let i = 0; i < 5; i++) p.push(cyl(1.6, 1.6, 3.8, 10, 0x45423a, -L / 2 + 2.5 + i * (L - 5) / 4, 1.8, s * (W / 2 - 1.8), Math.PI / 2, 0, 0));
+let trackTexC = null;
+function trackTex() {
+  if (trackTexC) return trackTexC;
+  const c = document.createElement('canvas'); c.width = 64; c.height = 256; const g = c.getContext('2d');
+  g.fillStyle = '#2a2723'; g.fillRect(0, 0, 64, 256);
+  for (let y = 0; y < 256; y += 16) { const gr = g.createLinearGradient(0, y, 0, y + 14); gr.addColorStop(0, '#5a554c'); gr.addColorStop(0.5, '#3d3933'); gr.addColorStop(1, '#1f1d1a'); g.fillStyle = gr; g.fillRect(2, y + 1, 60, 13); g.fillStyle = '#6a6458'; g.fillRect(28, y + 4, 8, 6); }
+  for (let i = 0; i < 300; i++) { g.fillStyle = `rgba(90,62,38,${Math.random() * 0.4})`; g.fillRect(Math.random() * 64, Math.random() * 256, 3, 3); }
+  trackTexC = new THREE.CanvasTexture(c); trackTexC.wrapS = trackTexC.wrapT = THREE.RepeatWrapping; trackTexC.colorSpace = THREE.SRGBColorSpace; return trackTexC;
+}
+function paintMat(nat) {
+  const k = 'paint_' + nat; if (matCache[k]) return matCache[k];
+  const n = A.tex.green_metal_rust && A.tex.green_metal_rust.normal;
+  const m = new THREE.MeshStandardMaterial({ map: camoTex(nat), vertexColors: true, normalMap: n || null, roughness: 0.78, metalness: 0.25 });
+  if (n) m.normalScale = new THREE.Vector2(0.6, 0.6);
+  return (matCache[k] = m);
+}
+function trackMat() { return matCache.track || (matCache.track = new THREE.MeshStandardMaterial({ map: trackTex(), vertexColors: true, roughness: 0.85, metalness: 0.4 })); }
+function steelMat() { return matCache.steel || (matCache.steel = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.6 })); }
+let crossTexC = {};
+function insignia(nat) {
+  if (crossTexC[nat]) return crossTexC[nat];
+  const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+  if (nat === 'DE') { g.fillStyle = '#f2f0e6'; g.fillRect(14, 4, 36, 56); g.fillRect(4, 14, 56, 36); g.fillStyle = '#111'; g.fillRect(22, 8, 20, 48); g.fillRect(8, 22, 48, 20); }
+  else if (nat === 'FR' || nat === 'UK' || nat === 'US') { g.fillStyle = nat === 'FR' ? '#1f3f8a' : '#c62828'; g.beginPath(); g.arc(32, 32, 30, 0, 7); g.fill(); g.fillStyle = '#f2f0e6'; g.beginPath(); g.arc(32, 32, 20, 0, 7); g.fill(); g.fillStyle = nat === 'FR' ? '#c62828' : '#1f3f8a'; g.beginPath(); g.arc(32, 32, 10, 0, 7); g.fill(); }
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  return (crossTexC[nat] = new THREE.MeshStandardMaterial({ map: t, transparent: true, roughness: 0.8, polygonOffset: true, polygonOffsetFactor: -2 }));
+}
+// أدوات بناء
+function TB() { return { paint: [], steel: [], track: [], tur: [], turSteel: [], decals: [] }; }
+const MUD = 0x8a7458, W = 0xffffff, STEEL = 0x3a3832;
+function plate(b, w, h, d, x, y, z, rx = 0, ry = 0, rz = 0, mud) { b.paint.push(box(w, h, d, mud ? MUD : W, x, y, z, rx, ry, rz)); }
+function rivetRow(b, x0, x1, y, z, n, axis = 'x') { for (let i = 0; i < n; i++) { const t = i / (n - 1); b.paint.push(sph(0.32, 0xb0a890, axis === 'x' ? x0 + (x1 - x0) * t : x0, axis === 'y' ? x0 + (x1 - x0) * t : y, z, 1, 1, 1, 5)); } }
+function wheels(b, x0, x1, n, y, z, r) { for (let i = 0; i < n; i++) { const x = x0 + (x1 - x0) * i / Math.max(1, n - 1); b.steel.push(cyl(r, r, 1.4, 12, 0x4a463e, x, y, z, Math.PI / 2, 0, 0), cyl(r * 0.35, r * 0.35, 1.6, 8, 0x77705f, x, y, z, Math.PI / 2, 0, 0)); } }
+function belt(b, L, H, z, y0, w = 3.6) {
+  const s = new THREE.Shape(), r = H / 2; s.moveTo(-L / 2 + r, 0); s.lineTo(L / 2 - r, 0); s.absarc(L / 2 - r, r, r, -Math.PI / 2, Math.PI / 2); s.lineTo(-L / 2 + r, H); s.absarc(-L / 2 + r, r, r, Math.PI / 2, Math.PI * 1.5);
+  const g = new THREE.ExtrudeGeometry(s, { depth: w, bevelEnabled: false, curveSegments: 10 }); g.translate(0, y0, z - w / 2); scaleUV(g, 0.12, 0.25);
+  b.track.push(prep(g, W));
+}
+function scaleUV(g, su, sv) { const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setXY(i, uv.getX(i) * su, uv.getY(i) * sv); }
+function rhombTrack(b, prof, z, w = 4) {
+  const s = new THREE.Shape(); prof.forEach(([x, y], i) => i ? s.lineTo(x, y) : s.moveTo(x, y)); s.closePath();
+  const g = new THREE.ExtrudeGeometry(s, { depth: w, bevelEnabled: true, bevelSize: 0.4, bevelThickness: 0.4, bevelSegments: 1 }); g.translate(0, 0, z - w / 2); scaleUV(g, 0.12, 0.25);
+  b.track.push(prep(g, W));
+  // الإطار الداخلي المدرّع للجنزير
+  const g2 = new THREE.ExtrudeGeometry(s, { depth: 0.6, bevelEnabled: false }); scaleUV(g2, 1 / 38, 1 / 38); g2.scale(0.86, 0.78, 1); g2.translate(0, 1.3, z + (z > 0 ? w / 2 + 0.55 : -w / 2 - 1.15));
+  b.paint.push(prep(g2, W));
+}
+function gun(b, len, r, x, y, z, rz = 0, tur) { (tur ? b.turSteel : b.steel).push(cyl(r, r * 1.1, len, 12, STEEL, x + len / 2 * Math.cos(rz), y + len / 2 * Math.sin(rz), z, 0, 0, Math.PI / 2 + rz), cyl(r * 1.35, r * 1.35, 1, 12, STEEL, x + len * Math.cos(rz), y + len * Math.sin(rz), z, 0, 0, Math.PI / 2 + rz)); }
+function mg(b, x, y, z, ry = 0) { const c = Math.cos(ry), s = Math.sin(ry); b.steel.push(box(1.6, 1.6, 1.6, 0x23211d, x, y, z, 0, -ry, 0), cyl(0.28, 0.28, 3.4, 6, STEEL, x + c * 2.2, y, z + s * 2.2, 0, -ry, Math.PI / 2)); }
+function cupola(b, r, h, x, y, z, tur) { const arr = tur ? b.tur : b.paint; arr.push(cyl(r * 0.9, r, h, 10, W, x, y + h / 2, z), cyl(r * 0.95, r * 0.95, 0.5, 10, 0xd8d0c0, x, y + h + 0.2, z)); (tur ? b.turSteel : b.steel).push(cyl(r * 1.01, r * 1.01, 0.5, 10, 0x15130f, x, y + h * 0.7, z)); }
+function deco(b, nat, x, y, z, ry, s = 4.5) { b.decals.push({ nat, x, y, z, ry, s }); }
+
+const TANKS = {
+  rhomb(b, nat, male) {
+    const prof = [[-17, 0.5], [13, 0.5], [18.5, 6], [16, 12], [-13, 12.5], [-18.5, 5.5]];
+    rhombTrack(b, prof, 8.6); rhombTrack(b, prof, -8.6);
+    plate(b, 24, 9, 13, -0.5, 7.2, 0); plate(b, 8, 4.5, 10, 7.5, 13.2, 0); b.steel.push(box(0.4, 1.2, 5, 0x15130f, 11.6, 13.5, 0));
+    [-1, 1].forEach(sd => { plate(b, 9, 5.5, 3.6, 1, 6.5, sd * 12.4); plate(b, 4, 3, 2, 4, 6.6, sd * 14.3, 0, 0, 0, 1);
+      if (male) gun(b, 7, 0.75, 5, 6.6, sd * 14.6); else mg(b, 5.5, 6.6, sd * 14.6, sd * 0.15); });
+    rivetRow(b, -12, 10, 11.8, 6.6, 12); rivetRow(b, -12, 10, 11.8, -6.6, 12); rivetRow(b, -12, 10, 2.9, 6.6, 12);
+    b.steel.push(box(3, 1, 13, 0x5a4a34, -21, 3, 0)); // ذيل الخشب
+    deco(b, nat, -6, 8, 8.6 + 2.2, 0); deco(b, nat, -6, 8, -8.6 - 2.2, Math.PI);
+  },
+  kwagen(b, nat) {
+    const prof = [[-21, 0.5], [17, 0.5], [22, 7], [19, 15], [-17, 15.5], [-22, 7]];
+    rhombTrack(b, prof, 11, 4.6); rhombTrack(b, prof, -11, 4.6);
+    plate(b, 34, 13, 17, 0, 9, 0); plate(b, 30, 2, 15, 0, 16.2, 0);
+    [-1, 1].forEach(sd => { [-9, 7].forEach(x => { plate(b, 7, 6, 4, x, 9, sd * 15.3); gun(b, 7, 0.85, x + 2.5, 9, sd * 16.2); }); mg(b, -17, 9, sd * 9, sd * 0.5); });
+    cupola(b, 3.2, 3.4, -6, 17, 0); cupola(b, 2.6, 2.8, 9, 17, 0); mg(b, 19, 10, 0); mg(b, 19, 10, 4);
+    rivetRow(b, -15, 15, 15.4, 8.6, 16); rivetRow(b, -15, 15, 15.4, -8.6, 16);
+    deco(b, nat, 0, 10, 13.6, 0, 6); deco(b, nat, 0, 10, -13.6, Math.PI, 6);
+  },
+  a7v(b, nat) {
+    belt(b, 24, 6, 6, 0.6, 3.6); belt(b, 24, 6, -6, 0.6, 3.6);
+    plate(b, 30, 7, 18, 0, 6.2, 0, 0, 0, 0, 1);       // الجونلة المدرعة اللي مغطية الجنازير
+    plate(b, 31, 5.5, 19, 0, 12, 0); plate(b, 6, 7, 18, 15.5, 9.5, 0, 0, 0, -0.45); plate(b, 6, 7, 18, -15.5, 9.5, 0, 0, 0, 0.45);
+    plate(b, 23, 1.2, 15, 0, 15.2, 0); cupola(b, 3.6, 3.6, -2, 15.6, 0);
+    b.steel.push(box(6, 2.5, 0.4, 0x16140f, -2, 17.6, 3.5), box(6, 2.5, 0.4, 0x16140f, -2, 17.6, -3.5));
+    gun(b, 7, 0.95, 17, 10, 0);
+    [-8, 0, 8].forEach(x => { mg(b, x, 11.5, 9.8, Math.PI / 2); mg(b, x, 11.5, -9.8, -Math.PI / 2); }); mg(b, -17, 11, 4, Math.PI); mg(b, -17, 11, -4, Math.PI);
+    rivetRow(b, -14, 14, 14.6, 9.6, 18); rivetRow(b, -14, 14, 14.6, -9.6, 18); rivetRow(b, -14, 14, 9.4, 9.2, 18); rivetRow(b, -14, 14, 9.4, -9.2, 18);
+    deco(b, nat, 6, 12, 9.6, 0); deco(b, nat, 6, 12, -9.6, Math.PI);
+  },
+  lk1(b, nat, kind = 1) {
+    belt(b, 20, 5, 5.6, 0.4, 3.2); belt(b, 20, 5, -5.6, 0.4, 3.2); wheels(b, -7, 7, 5, 2.6, 7.4, 1.6); wheels(b, -7, 7, 5, 2.6, -7.4, 1.6);
+    if (kind === 3) { plate(b, 9, 5, 9, -6, 6.5, 0); plate(b, 5, 4, 8.5, -6, 9.6, 0, 0, 0, 0.25); plate(b, 11, 6, 10, 4, 7, 0); b.tur.push(cyl(3.2, 3.6, 3.4, 10, W, 0, 1.7, 0), sph(3.2, W, 0, 3.4, 0, 1, 0.4, 1)); b.turSteel.push(cyl(0.3, 0.3, 5, 6, STEEL, 4, 1.8, 0, 0, 0, Math.PI / 2)); }
+    else {
+      plate(b, 9, 5, 9, 5, 6.5, 0); plate(b, 5, 3.5, 9, 9, 6, 0, 0, 0, -0.5); b.steel.push(box(0.3, 3, 6, 0x1a1814, 11.2, 6, 0));
+      for (let i = 0; i < 5; i++) b.steel.push(box(0.2, 2.4, 0.4, 0x6a655a, 11.3, 6, -2.4 + i * 1.2));
+      plate(b, 10, 7, 10, -5, 7.5, 0);
+      if (kind === 2) { plate(b, 9, 3.5, 9.5, -5, 12.6, 0, 0, 0, 0.12); gun(b, 6, 0.8, -1, 12.4, 0); }
+      else { b.tur.push(cyl(3.3, 3.7, 3.6, 10, W, 0, 1.8, 0), cyl(2.8, 3.3, 1, 10, W, 0, 4.1, 0)); b.turSteel.push(cyl(0.3, 0.3, 5.5, 6, STEEL, 4, 2, 0, 0, 0, Math.PI / 2)); }
     }
-  });
-  return p;
-}
-function tankGeo(look, team) {
-  const k = `tank_${look}_${team}`; if (geoCache[k]) return geoCache[k];
-  const T = TEAM[team], c0 = T.tank[0], c1 = T.tank[1];
-  let hull = [], tur = [];
-  if (look === 'rhomb') {
-    const prof = [[-17, 0.5], [13, 0.5], [18, 6], [16, 11.5], [-13, 12], [-18, 5]];
-    hull = trackParts(34, 20, 0, prof);
-    hull.push(box(22, 8, 11.5, c0, -0.5, 7, 0), box(7, 4, 9, c1, 7.5, 12.6, 0), box(5, 1.5, 6, 0x1c1b17, 10.5, 12, 0));
-    hull.push(box(7, 5, 3.5, c1, 1, 6.5, 11.6), box(7, 5, 3.5, c1, 1, 6.5, -11.6));
-    hull.push(...camoParts(T, team, 22, 11, 8, 3));
-  } else if (look === 'ft') {
-    hull = trackParts(20, 11, 3.2); hull.push(box(16, 5, 7.5, c0, 0, 5.6, 0), box(5, 3, 7, c1, 7, 4.6, 0, 0, 0, -0.5), box(4, 2, 2, c1, -8, 4.2, 0));
-    tur = [cyl(3.6, 4.2, 4.5, 8, c1, 0, 2.2, 0), sph(3.6, c1, 0, 4.4, 0, 1, 0.45, 1), cyl(0.55, 0.55, 8, 8, METAL, 4.5, 1.8, 0, 0, 0, Math.PI / 2)];
-  } else if (look === 'whippet') {
-    hull = trackParts(26, 13, 3.4); hull.push(box(22, 4.5, 9, c0, 1, 5, 0), box(10, 7, 10, c1, -6, 8, 0), box(1, 1.2, 6, 0x111111, -0.8, 9.6, 0));
-  } else if (look === 'car') {
-    hull = [box(18, 5, 9, c0, 0, 5, 0), box(6, 3, 8.5, c1, 7, 4.2, 0, 0, 0, -0.3)];
-    [[-5.5, 5], [5.5, 5], [-5.5, -5], [5.5, -5]].forEach(([x, z]) => hull.push(cyl(2.4, 2.4, 1.6, 12, 0x1a1a16, x, 2.4, z, Math.PI / 2, 0, 0)));
-    tur = [cyl(3.2, 3.6, 3.6, 10, c1, 0, 1.8, 0), cyl(0.45, 0.45, 7, 8, METAL, 4, 2, 0, 0, 0, Math.PI / 2)];
-  } else if (look === 'a7v') {
-    hull = trackParts(28, 18, 3); hull.push(box(30, 9, 19, c0, 0, 8.4, 0), box(26, 2, 15, c1, 0, 13.6, 0), box(8, 4, 8, c1, -2, 16, 0));
-    for (let i = -1; i <= 1; i++) { hull.push(box(1.6, 1.4, 0.4, 0x111111, i * 8, 10, 9.6), box(1.6, 1.4, 0.4, 0x111111, i * 8, 10, -9.6)); }
-    hull.push(cyl(0.9, 0.9, 7, 8, METAL, 18, 9.5, 0, 0, 0, Math.PI / 2));
-  } else { // box (CA1) و long (سان شاموند)
-    const L = look === 'long' ? 34 : 26;
-    hull = trackParts(L - 4, 14, 3); hull.push(box(L, 8, 14, c0, 0, 7, 0), box(L - 8, 3, 11, c1, -2, 12.5, 0), box(L * 0.25, 4, 13, c1, L / 2 - 4, 8, 0, 0, 0, -0.35));
-    hull.push(cyl(1.1, 1.1, look === 'long' ? 12 : 7, 10, METAL, L / 2 + (look === 'long' ? 3 : 1), 8, look === 'long' ? 0 : 3, 0, 0, Math.PI / 2));
-    hull.push(...camoParts(T, team, L - 6, 12, 8, 3.5));
-  }
-  if (look === 'rhomb') {
-    // مدافع أو رشاشات على الجناب
-    hull.push(cyl(0.8, 0.8, 7, 8, METAL, 6, 6.8, 13.4, 0, 0, Math.PI / 2), cyl(0.8, 0.8, 7, 8, METAL, 6, 6.8, -13.4, 0, 0, Math.PI / 2));
-  }
-  return (geoCache[k] = { hull: merge(hull), tur: tur.length ? merge(tur) : null });
+    rivetRow(b, -9, 9, 9.8, 5.1, 10); rivetRow(b, -9, 9, 9.8, -5.1, 10);
+    deco(b, nat, -4, 8, 5.1, 0, 3.6); deco(b, nat, -4, 8, -5.1, Math.PI, 3.6);
+  },
+  lk2(b, nat) { TANKS.lk1(b, nat, 2); },
+  lk3(b, nat) { TANKS.lk1(b, nat, 3); },
+  dw1(b, nat) {
+    belt(b, 22, 6, 7, 0.4, 4); belt(b, 22, 6, -7, 0.4, 4); wheels(b, -8, 8, 6, 3, 9.1, 1.8); wheels(b, -8, 8, 6, 3, -9.1, 1.8);
+    plate(b, 26, 10, 15, 0, 10, 0); plate(b, 7, 6, 14, 12, 9, 0, 0, 0, -0.6); plate(b, 20, 1.2, 13, -1, 15.5, 0); cupola(b, 2.4, 2.6, 6, 15.6, 0);
+    mg(b, 14.5, 10, 3); mg(b, 14.5, 10, -3); mg(b, 0, 11, 7.7, Math.PI / 2); mg(b, 0, 11, -7.7, -Math.PI / 2);
+    rivetRow(b, -12, 12, 14.6, 7.6, 15); rivetRow(b, -12, 12, 14.6, -7.6, 15);
+    deco(b, nat, -5, 10, 7.6, 0); deco(b, nat, -5, 10, -7.6, Math.PI);
+  },
+  dw2(b, nat) {
+    const prof = [[-15, 0.5], [12, 0.5], [16, 5.5], [14, 10.5], [-11, 11], [-16, 5]];
+    rhombTrack(b, prof, 8, 3.8); rhombTrack(b, prof, -8, 3.8);
+    plate(b, 22, 10, 12, 0, 9, 0); plate(b, 10, 4, 11, 3, 15.5, 0, 0, 0, -0.15); cupola(b, 2.3, 2.4, -4, 14, 0);
+    mg(b, 12.5, 9, 0); mg(b, -2, 10, 6.4, Math.PI / 2); mg(b, -2, 10, -6.4, -Math.PI / 2);
+    rivetRow(b, -10, 10, 13.8, 6.1, 12); rivetRow(b, -10, 10, 13.8, -6.1, 12);
+    deco(b, nat, -4, 7, 10.1, 0, 4); deco(b, nat, -4, 7, -10.1, Math.PI, 4);
+  },
+  gross(b, nat) {
+    const prof = [[-19, 0.5], [16, 0.5], [21, 6.5], [18, 12.5], [-16, 13], [-21, 6]];
+    rhombTrack(b, prof, 9, 4.2); rhombTrack(b, prof, -9, 4.2);
+    plate(b, 30, 7, 14, 0, 8, 0); plate(b, 9, 7, 12, 8, 14, 0); b.steel.push(box(0.4, 1.4, 7, 0x15130f, 12.6, 15.4, 0));
+    b.steel.push(box(10, 3, 12, 0x5a4a34, -8, 13, 0), box(4, 3, 4, 0x6a5a40, -12, 16, 3), box(3, 2.5, 3, 0x4a3a28, -6, 16, -3));
+    gun(b, 6, 0.8, 12, 13, 0); mg(b, -2, 10, 7.6, Math.PI / 2); mg(b, -2, 10, -7.6, -Math.PI / 2);
+    rivetRow(b, -12, 12, 11.6, 7.1, 14); rivetRow(b, -12, 12, 11.6, -7.1, 14);
+    deco(b, nat, -2, 7, 11.2, 0, 5); deco(b, nat, -2, 7, -11.2, Math.PI, 5);
+  },
+  ft(b, nat) {
+    belt(b, 19, 5.5, 4.8, 0.4, 3); belt(b, 19, 5.5, -4.8, 0.4, 3); wheels(b, -6, 6, 4, 2.7, 6.4, 1.5); wheels(b, -6, 6, 4, 2.7, -6.4, 1.5);
+    plate(b, 14, 6, 7, 0, 6.5, 0); plate(b, 5, 5, 7, 8, 5.8, 0, 0, 0, -0.55); plate(b, 6, 3, 7, -8.5, 5, 0, 0, 0, 0.3);
+    b.steel.push(box(6, 1, 5, 0x3a3328, -13, 3, 0, 0, 0, 0.35));     // الذيل
+    b.tur.push(cyl(3.3, 3.9, 4.2, 8, W, 0, 2.1, 0), sph(3.3, W, 0, 4.2, 0, 1, 0.45, 1)); b.turSteel.push(cyl(0.55, 0.6, 6, 10, STEEL, 4.5, 2, 0, 0, 0, Math.PI / 2));
+    rivetRow(b, -6, 6, 9.6, 3.6, 8); rivetRow(b, -6, 6, 9.6, -3.6, 8);
+    deco(b, nat, -3, 6.5, 3.6, 0, 3.2); deco(b, nat, -3, 6.5, -3.6, Math.PI, 3.2);
+  },
+  whippet(b, nat) {
+    belt(b, 25, 5, 6, 0.4, 3.4); belt(b, 25, 5, -6, 0.4, 3.4); wheels(b, -9, 9, 6, 2.5, 7.8, 1.5); wheels(b, -9, 9, 6, 2.5, -7.8, 1.5);
+    plate(b, 14, 4, 9, 4, 5.5, 0); plate(b, 5, 3, 9, 11.5, 5, 0, 0, 0, -0.45); plate(b, 11, 8, 11, -7, 8, 0); plate(b, 9, 1, 9.5, -7, 12.4, 0);
+    mg(b, -1, 9, 0); mg(b, -7, 9, 5.8, Math.PI / 2); mg(b, -7, 9, -5.8, -Math.PI / 2); mg(b, -12.8, 9, 0, Math.PI);
+    rivetRow(b, -12, -2, 11.8, 5.6, 7); rivetRow(b, -12, -2, 11.8, -5.6, 7);
+    deco(b, nat, -7, 8, 5.6, 0, 3.6); deco(b, nat, -7, 8, -5.6, Math.PI, 3.6);
+  },
+  box(b, nat) { // شنايدر CA1
+    belt(b, 20, 5, 5.5, 0.4, 3.4); belt(b, 20, 5, -5.5, 0.4, 3.4);
+    plate(b, 22, 9, 15, -1, 7.5, 0); plate(b, 8, 6, 12, 11, 7, 0, 0, 0, -0.6); b.steel.push(box(8, 1, 1, 0x3a3832, 15, 4.5, 0, 0, 0, -0.3)); // منقار قطع السلك
+    plate(b, 12, 2.5, 11, -4, 13, 0); cupola(b, 2.2, 2.2, 2, 13.6, 0); gun(b, 5, 1.1, 8, 7, 5.8);
+    mg(b, -3, 8, 7.8, Math.PI / 2); mg(b, -3, 8, -7.8, -Math.PI / 2);
+    rivetRow(b, -11, 9, 12, 7.6, 13); rivetRow(b, -11, 9, 12, -7.6, 13);
+    deco(b, nat, -6, 8, 7.6, 0); deco(b, nat, -6, 8, -7.6, Math.PI);
+  },
+  long(b, nat) { // سان شاموند
+    belt(b, 24, 5, 5.5, 0.4, 3.4); belt(b, 24, 5, -5.5, 0.4, 3.4);
+    plate(b, 32, 8, 14, 0, 7.5, 0); plate(b, 8, 5, 13, 16.5, 8, 0, 0, 0, -0.5); plate(b, 26, 2, 12, -2, 12.6, 0, 0, 0, 0.02);
+    cupola(b, 2.4, 2.6, 11, 13.4, 3.5); cupola(b, 2.4, 2.6, -12, 13.4, -3.5); gun(b, 10, 1.1, 18, 8.5, 0);
+    mg(b, 2, 8.5, 7.6, Math.PI / 2); mg(b, 2, 8.5, -7.6, -Math.PI / 2); mg(b, -16.5, 8.5, 0, Math.PI);
+    rivetRow(b, -15, 13, 11.4, 7.1, 16); rivetRow(b, -15, 13, 11.4, -7.1, 16);
+    deco(b, nat, -6, 8, 7.1, 0); deco(b, nat, -6, 8, -7.1, Math.PI);
+  },
+  car(b, nat) {
+    [[-5.5, 5.2], [5.5, 5.2], [-5.5, -5.2], [5.5, -5.2]].forEach(([x, z]) => b.track.push(cyl(2.6, 2.6, 1.6, 16, 0x777777, x, 2.6, z, Math.PI / 2, 0, 0)));
+    plate(b, 17, 4.5, 9, 0, 5.4, 0); plate(b, 6, 3.5, 8.5, 7.5, 4.8, 0, 0, 0, -0.35); plate(b, 4, 2, 10, 5.5, 3.6, 0, 0, 0, 0, 1); plate(b, 4, 2, 10, -5.5, 3.6, 0, 0, 0, 0, 1);
+    b.steel.push(box(0.3, 2.2, 5.5, 0x1a1814, 10.4, 5, 0));
+    b.tur.push(cyl(3.2, 3.6, 3.4, 10, W, 0, 1.7, 0), cyl(2.9, 3.2, 0.6, 10, W, 0, 3.6, 0)); b.turSteel.push(cyl(0.35, 0.35, 6, 6, STEEL, 4, 1.8, 0, 0, 0, Math.PI / 2));
+    deco(b, nat, -3, 5.5, 4.6, 0, 3); deco(b, nat, -3, 5.5, -4.6, Math.PI, 3);
+  },
+};
+function tankGeo(look, card) {
+  const nat = CARDS[card] ? CARDS[card].nat : 'UK';
+  const k = `tank_${look}_${card}`; if (geoCache[k]) return geoCache[k];
+  const b = TB(); (TANKS[look] || TANKS.box)(b, nat, card === 'mk4m');
+  // طين على الأجزاء التحتانية
+  const mudify = g => { const p = g.attributes.position, c = g.attributes.color; for (let i = 0; i < p.count; i++) { const y = p.getY(i); if (y < 4.5) { const t = Math.max(0, (4.5 - y) / 4.5) * 0.55; c.setXYZ(i, c.getX(i) * (1 - t) + 0.45 * t, c.getY(i) * (1 - t) + 0.36 * t, c.getZ(i) * (1 - t) + 0.26 * t); } } return g; };
+  const out = { nat, paint: mudify(merge(b.paint)), steel: b.steel.length ? merge(b.steel) : null, track: b.track.length ? mudify(merge(b.track)) : null,
+    tur: b.tur.length ? merge(b.tur) : null, turSteel: b.turSteel.length ? merge(b.turSteel) : null, decals: b.decals };
+  return (geoCache[k] = out);
 }
 function makeTank(look, team, card) {
-  const g = new THREE.Group(), gg = tankGeo(look, team);
-  g.add(mesh(gg.hull, tmat('metal', 'green_metal_rust', { metal: 0.3, rough: 0.75 })));
+  const g = new THREE.Group(), gg = tankGeo(look, card), pm = paintMat(gg.nat);
+  g.add(mesh(gg.paint, pm)); if (gg.steel) g.add(mesh(gg.steel, steelMat())); if (gg.track) g.add(mesh(gg.track, trackMat()));
+  gg.decals.forEach(d => { const m = new THREE.Mesh(new THREE.PlaneGeometry(d.s, d.s), insignia(d.nat)); m.position.set(d.x, d.y, d.z); m.rotation.y = d.ry; g.add(m); });
   let tur = null;
-  if (gg.tur) { tur = mesh(gg.tur, tmat('metal', 'green_metal_rust', { metal: 0.3, rough: 0.75 })); tur.position.y = look === 'car' ? 7.5 : 8; tur.position.x = look === 'ft' ? 2 : 0; g.add(tur); }
-  // علامة الجنسية
-  const m = new THREE.Mesh(new THREE.CircleGeometry(1.8, 16), new THREE.MeshBasicMaterial({ color: team === 'mine' ? 0x2f5d9a : 0xeeeeee }));
-  m.rotation.x = -Math.PI / 2; m.position.set(-6, look === 'rhomb' ? 11.1 : look === 'a7v' ? 14.7 : 7.7, 0); g.add(m);
+  if (gg.tur) { tur = new THREE.Group(); tur.add(mesh(gg.tur, pm)); if (gg.turSteel) tur.add(mesh(gg.turSteel, steelMat())); tur.position.y = look === 'car' ? 7.6 : look === 'ft' ? 9.4 : look === 'lk1' ? 11 : 10; tur.position.x = look === 'ft' ? 1.5 : look === 'lk3' ? 4 : look === 'car' ? 0 : -5; g.add(tur); }
+  // شريط لون الفريق تحت الدبابة عشان تفرق صاحبك من عدوك
+  const ring = new THREE.Mesh(new THREE.RingGeometry(15, 17, 32), new THREE.MeshBasicMaterial({ color: team === 'mine' ? 0x3a8dde : 0xd9483a, transparent: true, opacity: 0.55, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.6; g.add(ring); g.userData.ring = ring;
   return { g, tur };
 }
 
@@ -753,23 +897,38 @@ const GFX3 = {
     renderer.render(scene, camera);
   },
   // صورة للكارت: نرسم الموديل في مشهد صغير
-  portrait(id, size = 160) {
+  portrait(id, size = 320) {
     try {
       const c = CARDS[id], st = RT[id]; if (!c || !st || c.kind !== 'troop') return null;
+      const W2 = size, H2 = Math.round(size * 0.72);
       const r = GFX3._pr || (GFX3._pr = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true }));
-      r.setSize(size, size, false); r.toneMapping = THREE.ACESFilmicToneMapping; r.outputColorSpace = THREE.SRGBColorSpace;
+      r.setSize(W2, H2, false); r.toneMapping = THREE.ACESFilmicToneMapping; r.toneMappingExposure = 1.1; r.outputColorSpace = THREE.SRGBColorSpace;
+      r.shadowMap.enabled = true; r.shadowMap.type = THREE.PCFSoftShadowMap;
       const sc = new THREE.Scene(); const oldMe = me; me = 0;
-      sc.add(new THREE.HemisphereLight(0xffffff, 0x554433, 1.4)); const d = new THREE.DirectionalLight(0xfff0d8, 2.4); d.position.set(-40, 80, 60); sc.add(d);
+      if (A.env) sc.environment = A.env, sc.environmentIntensity = 0.5;
+      sc.add(new THREE.HemisphereLight(0xffffff, 0x6a5a48, 1.1));
+      const d = new THREE.DirectionalLight(0xfff0d8, 2.8); d.position.set(-60, 120, 80); d.castShadow = true; d.shadow.mapSize.set(1024, 1024);
+      Object.assign(d.shadow.camera, { left: -60, right: 60, top: 60, bottom: -60, near: 1, far: 400 }); sc.add(d);
+      const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.ShadowMaterial({ opacity: 0.35 })); floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; sc.add(floor);
       const old = world; world = sc;
-      const v = makeVisual({ id: -1, t: 'u', card: id, side: 0, x: WWd / 2, y: WHd / 2, hp: 1, max: 1 }); v.hp.visible = false;
+      const v = makeVisual({ id: -1, t: 'u', card: id, side: 0, x: WWd / 2, y: WHd / 2, hp: 1, max: 1, face: 0 }); v.hp.visible = false;
+      if (st.n > 1 && c.type === 'INF') for (let i = 1; i < Math.min(3, st.n); i++) { const v2 = makeVisual({ id: -1, t: 'u', card: id, side: 0, x: WWd / 2, y: WHd / 2, hp: 1, max: 1 }); v2.hp.visible = false; sc.remove(v2.g); v2.g.position.set(-9 * i, 0, (i % 2 ? 1 : -1) * 8); v2.g.scale.setScalar(1); v.g.add(v2.g); }
       world = old; me = oldMe;
-      if (st.n > 1 && c.type === 'INF') { for (let i = 1; i < Math.min(3, st.n); i++) { const v2 = makeVisual({ id: -1, t: 'u', card: id, side: 0, x: 0, y: 0, hp: 1, max: 1 }); v2.hp.visible = false; v2.g.position.set(-8 * i, 0, (i % 2 ? 1 : -1) * 7); sc.add(v2.g); sc.remove(v2.g); v.g.add(v2.g); } }
-      v.g.position.set(0, 0, 0); v.g.rotation.y = -0.6;
-      const bb = new THREE.Box3().setFromObject(v.g), ctr = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3()).length();
-      const cam = new THREE.PerspectiveCamera(30, 1, 1, 2000); cam.position.set(ctr.x + sz * 0.9, ctr.y + sz * 0.8, ctr.z + sz * 1.3); cam.lookAt(ctr);
+      v.g.traverse(o => { if (o.isMesh && o.material && o.material.type === 'MeshBasicMaterial' && o.geometry.type === 'RingGeometry') o.visible = false; });
+      v.g.position.set(0, 0, 0); v.g.rotation.y = 0.55; v.g.updateMatrixWorld(true);
+      v.hp.visible = false;
+      const bb = new THREE.Box3(); v.g.traverseVisible(o => { if (o.isMesh && o.geometry.type !== 'RingGeometry' && o.geometry.type !== 'PlaneGeometry') bb.expandByObject(o, false); });
+      const ctr = bb.getCenter(new THREE.Vector3()), sz = bb.getSize(new THREE.Vector3());
+      const cam = new THREE.PerspectiveCamera(26, W2 / H2, 1, 3000);
+      const dir = new THREE.Vector3(0.55, 0.36, 1).normalize();
+      const pts = []; for (let i = 0; i < 8; i++) pts.push(new THREE.Vector3(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z));
+      let lo = 5, hi = 2000;
+      for (let it = 0; it < 30; it++) { const dd = (lo + hi) / 2; cam.position.copy(ctr).addScaledVector(dir, dd); cam.lookAt(ctr); cam.updateMatrixWorld(); cam.updateProjectionMatrix();
+        const ok = pts.every(p => { const q = p.clone().project(cam); return Math.abs(q.x) < 0.9 && Math.abs(q.y) < 0.86; }); if (ok) hi = dd; else lo = dd; }
+      cam.position.copy(ctr).addScaledVector(dir, hi); cam.lookAt(ctr);
       r.setClearColor(0x000000, 0); r.render(sc, cam);
       return r.domElement.toDataURL('image/png');
-    } catch (e) { return null; }
+    } catch (e) { console.warn(e); return null; }
   },
 };
 window.GFX3 = GFX3;

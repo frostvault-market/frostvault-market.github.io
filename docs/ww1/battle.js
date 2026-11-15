@@ -100,7 +100,7 @@ function hud() {
   const hand = st.hand(), key = hand.join() + '|' + B.sel + '|' + st.next();
   if (key !== B.handKey) {
     B.handKey = key;
-    $('#bhand').innerHTML = hand.map((id, i) => { const c = CARDS[id]; const ph = photo(id); return `<div class="hc ${c.kind} r-${c.rarity} ${ph ? 'hasph' : ''} ${B.sel === i ? 'sel' : ''}" data-i="${i}" ${ph ? `style="background-image:url('${ph.f}')"` : ''}><b class="hcost">${c.cost}</b>${ph ? '' : icon(c)}<span>${esc(c.name)}</span></div>`; }).join('')
+    $('#bhand').innerHTML = hand.map((id, i) => { const c = CARDS[id]; const ph = photo(id); return `<div class="hc ${c.kind} r-${c.rarity} ${ph ? 'hasph' + (ph.r ? ' render' : '') : ''} ${B.sel === i ? 'sel' : ''}" data-i="${i}" ${ph ? `style="background-image:url('${ph.f}')"` : ''}><b class="hcost">${c.cost}</b>${ph ? '' : icon(c)}<span>${esc(c.name)}</span></div>`; }).join('')
       + `<div class="hnext ${st.next() && photo(st.next()) ? 'hasph' : ''}" ${st.next() && photo(st.next()) ? `style="background-image:url('${photo(st.next()).f}')"` : ''}><small>الجاي</small>${st.next() && !photo(st.next()) ? icon(CARDS[st.next()]) : ''}</div>`;
   }
   document.querySelectorAll('.hc').forEach(el => { const c = CARDS[hand[+el.dataset.i]]; el.classList.toggle('dim', !c || c.cost > sup); });
