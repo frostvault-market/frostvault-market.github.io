@@ -12,7 +12,7 @@ function startBattle(o) {
   app().innerHTML = `<div class="battle">
     <div class="bhud"><button id="bmenu">☰</button>${B.mode !== 'ai' ? '<button id="emote">💬</button>' : ''}
       <span class="bname" id="foename"></span><span class="crw foe" id="crfoe">🏴 0</span><span class="btimer" id="btimer">3:00</span><span class="crw me" id="crme">0 🏴</span></div>
-    <div class="bfield"><canvas id="cv"></canvas><div class="mapname" id="mapname"></div></div>
+    <div class="bfield"><canvas id="cv"></canvas><div class="mapname" id="mapname"></div><div class="loading" id="loading">⏳ بيجهّز ساحة المعركة...</div></div>
     <div class="dock"><div class="bhand" id="bhand"></div>
       <div class="supbar"><div class="supfill" id="supfill"></div><div class="supcells">${'<i></i>'.repeat(MAX_SUPPLY)}</div><span id="supnum">⛽ 5</span></div></div>
   </div>`;
@@ -57,6 +57,9 @@ function loop(ts) {
   B.raf = requestAnimationFrame(loop);
   const dt = Math.min(0.1, B.last ? (ts - B.last) / 1000 : 0.016); B.last = ts;
   let ents, t;
+  const loading = RENDER.ready && !RENDER.ready();
+  const ld = $('#loading'); if (ld) ld.style.display = loading ? 'flex' : 'none';
+  if (loading) { RENDER.frame({ ents: [], t: 0, ghost: null }, dt); return; }
   if (B.sim) {
     if (!B.paused) {
       B.acc += dt;

@@ -1,6 +1,8 @@
 // ===== الرسم الـ3D (three.js): كاميرا مايلة، شمس وضل، بيوت وشجر، جنود ودبابات بتتحرك =====
 import * as THREE from 'three';
 import { mergeGeometries } from './lib/BufferGeometryUtils.js';
+import { GLTFLoader } from './lib/GLTFLoader.js';
+import { RGBELoader } from './lib/RGBELoader.js';
 
 const WWd = 360, WHd = 640;
 const TEAM = {
@@ -21,6 +23,45 @@ const W3 = (x, y) => [x - WWd / 2, y - WHd / 2]; // من إحداثيات الل
 let shakeAmt = 0, camBase = null, bannerHost = null;
 const perf = { n: 0, sum: 0, level: 0 }; // جودة تلقائية: لو التليفون بطيء نقلّل
 
+// ---------- الصور الحقيقية (Poly Haven, CC0) ----------
+const A = { tex: {}, gray: {}, models: {}, env: null, loading: null, ready: false };
+const GROUND = {
+  mons: ['aerial_grass_rock', 'forest_leaves_02'], marne: ['aerial_grass_rock', 'forest_leaves_02'], cambrai: ['aerial_grass_rock', 'forest_leaves_02'],
+  amiens: ['aerial_grass_rock', 'farm_soil'], ypres: ['aerial_ground_rock', 'burned_ground_01'], gallipoli: ['aerial_beach_01', 'dirt_aerial_02'],
+  verdun: ['burned_ground_01', 'dirt_aerial_02'], somme: ['dry_ground_01', 'burned_ground_01'], spring: ['aerial_grass_rock', 'burned_ground_01'],
+};
+const TINT = { mons: [0.62, 0.78, 0.5], marne: [0.66, 0.8, 0.52], cambrai: [0.64, 0.76, 0.52], amiens: [0.8, 0.8, 0.6], spring: [0.62, 0.7, 0.52], ypres: [0.72, 0.7, 0.6], gallipoli: [0.95, 0.9, 0.8], verdun: [0.7, 0.62, 0.55], somme: [0.85, 0.83, 0.78] };
+const NORMALS = new Set(['aerial_grass_rock', 'aerial_mud_1', 'aerial_ground_rock', 'aerial_beach_01', 'dirt_aerial_02', 'burned_ground_01', 'farm_soil', 'forest_leaves_02', 'clay_roof_tiles', 'roof_slates_02', 'plastered_stone_wall', 'rustic_stone_wall', 'weathered_planks', 'concrete_wall_008', 'green_metal_rust', 'dry_ground_01']);
+const MODEL_IDS = ['shrub_03', 'rock_07', 'wooden_military_crate', 'ammo_box', 'barrel_03', 'old_tyre', 'tree_stump_01'];
+const imgLoader = new THREE.ImageLoader();
+function loadImg(url) { return new Promise(res => imgLoader.load(url, res, undefined, () => res(null))); }
+async function loadTex(name) {
+  if (A.tex[name]) return A.tex[name];
+  const [img, nimg] = await Promise.all([loadImg(`assets/tex/${name}.jpg`), NORMALS.has(name) ? loadImg(`assets/tex/${name}_n.jpg`) : null]);
+  const mk = (im, srgb) => { if (!im) return null; const t = new THREE.Texture(im); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.needsUpdate = true; return t; };
+  // نسخة رمادي فاتحة عشان تتلوّن بلون الوحدة/المبنى
+  let gray = null;
+  if (img) { const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+    const d = g.getImageData(0, 0, c.width, c.height), p = d.data; let sum = 0; for (let i = 0; i < p.length; i += 4) sum += (p[i] * 0.3 + p[i + 1] * 0.59 + p[i + 2] * 0.11);
+    const k = 225 / (sum / (p.length / 4)); for (let i = 0; i < p.length; i += 4) { const v = Math.min(255, (p[i] * 0.3 + p[i + 1] * 0.59 + p[i + 2] * 0.11) * k); p[i] = p[i + 1] = p[i + 2] = v; }
+    g.putImageData(d, 0, 0); gray = new THREE.CanvasTexture(c); gray.wrapS = gray.wrapT = THREE.RepeatWrapping; gray.colorSpace = THREE.SRGBColorSpace; gray.anisotropy = 4; }
+  return (A.tex[name] = { map: mk(img, true), normal: mk(nimg, false), gray });
+}
+function preload(mid) {
+  const need = new Set([...(GROUND[mid] || GROUND.mons), 'clay_roof_tiles', 'roof_slates_02', 'plastered_stone_wall', 'rustic_stone_wall', 'weathered_planks', 'concrete_wall_008', 'green_metal_rust', 'rough_wood', 'dry_ground_01', 'forest_leaves_02', 'gravel_road']);
+  const jobs = [...need].map(loadTex);
+  if (!Object.keys(A.models).length) { const gl = new GLTFLoader(); MODEL_IDS.forEach(id => jobs.push(new Promise(res => gl.load(`assets/models/${id}/${id}.gltf`, g => { A.models[id] = g.scene; g.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; if (id === 'shrub_03') o.material.color.setRGB(0.62, 0.68, 0.5); } }); res(); }, undefined, () => res())))); }
+  if (!A.env) jobs.push(new Promise(res => new RGBELoader().load('assets/sky.hdr', t => { A.envRaw = t; res(); }, undefined, () => res())));
+  return Promise.all(jobs);
+}
+function tmat(key, texName, opts = {}) {
+  const k = 't_' + key; if (matCache[k]) return matCache[k];
+  const t = A.tex[texName] || {};
+  const m = new THREE.MeshStandardMaterial({ vertexColors: true, map: opts.color ? t.map : t.gray, normalMap: t.normal || null, roughness: opts.rough ?? 0.9, metalness: opts.metal ?? 0.05 });
+  if (m.normalMap) m.normalScale = new THREE.Vector2(opts.ns ?? 1, opts.ns ?? 1);
+  return (matCache[k] = m);
+}
+
 // ---------- مساعدات بناء الموديلات ----------
 function tint(geo, color) {
   const c = new THREE.Color(color), n = geo.attributes.position.count, arr = new Float32Array(n * 3);
@@ -29,7 +70,7 @@ function tint(geo, color) {
 }
 function prep(geo, color, x = 0, y = 0, z = 0, rx = 0, ry = 0, rz = 0, sx = 1, sy = 1, sz = 1) {
   geo = geo.index ? geo.toNonIndexed() : geo;
-  if (geo.attributes.uv) geo.deleteAttribute('uv');
+  if (geo.attributes.uv1) geo.deleteAttribute('uv1');
   const m = new THREE.Matrix4().compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)), new THREE.Vector3(sx, sy, sz));
   geo.applyMatrix4(m); return tint(geo, color);
 }
@@ -44,39 +85,42 @@ function mat(key, opts = {}) {
 function mesh(geo, m = mat('v'), cast = true) { const o = new THREE.Mesh(geo, m); o.castShadow = cast; o.receiveShadow = true; return o; }
 
 // ---------- الجنود ----------
+const cap = (r, l, c, x, y, z, rx = 0, ry = 0, rz = 0) => prep(new THREE.CapsuleGeometry(r, l, 3, 8), c, x, y, z, rx, ry, rz);
 function soldierGeo(team, kind) {
   const k = `sold_${team}_${kind}`; if (geoCache[k]) return geoCache[k];
   const T = TEAM[team], parts = [];
+  const helmet = (x, y, z) => team === 'mine'
+    ? [prep(new THREE.SphereGeometry(1.6, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2), T.helm, x, y, z, 0, 0, 0, 1, 0.75, 1), cyl(2.5, 2.4, 0.25, 16, T.helm, x, y, z)]
+    : [prep(new THREE.SphereGeometry(1.7, 12, 7, 0, Math.PI * 2, 0, Math.PI * 0.62), T.helm, x, y - 0.3, z, 0, 0, 0, 1.05, 0.95, 1), cyl(1.95, 2.1, 0.5, 14, T.helm, x - 0.3, y - 0.9, z)];
   if (kind === 'prone') {
-    parts.push(box(7.5, 2, 3.4, T.uni, -1, 1.2, 0), box(2.6, 1.4, 3, T.uni2, -5, 1, 0), sph(1.3, SKIN, 3.4, 2, 0));
-    parts.push(team === 'mine' ? cyl(2.2, 2.2, 0.35, 10, T.helm, 3.5, 2.7, 0) : cyl(1.5, 1.7, 1.2, 10, T.helm, 3.3, 2.6, 0), sph(1.4, T.helm, 3.5, 2.8, 0, 1, 0.6, 1));
-    parts.push(box(7, 0.5, 0.5, WOOD, 5.5, 1.6, 0.8));
+    parts.push(cap(1.5, 4.5, T.uni, -1, 1.4, 0, 0, 0, Math.PI / 2), cap(0.75, 4, T.uni2, -5.5, 0.9, 0.9, 0, 0, Math.PI / 2), cap(0.75, 4, T.uni2, -5.5, 0.9, -0.9, 0, 0, Math.PI / 2));
+    parts.push(sph(1.15, SKIN, 3.3, 2.1, 0, 1, 1, 1, 10), ...helmet(3.4, 2.7, 0));
+    parts.push(box(7, 0.5, 0.5, WOOD, 5.5, 1.7, 0.9), cap(0.5, 2.5, T.uni2, 2.3, 1.6, 1.6, 0, 0, Math.PI / 2), cap(0.5, 2.5, T.uni2, 2.3, 1.6, -1.4, 0, 0, Math.PI / 2));
   } else {
-    parts.push(box(2.8, 4.4, 3.8, T.uni, 0, 6.4, 0));                  // جسم
-    parts.push(box(2.9, 0.6, 3.9, 0x3d3220, 0, 4.4, 0));               // حزام
-    parts.push(box(1.6, 3, 3, kind === 'flame' ? 0x55554d : 0x4f4630, -2.1, 6.8, 0)); // شنطة
-    if (kind === 'flame') parts.push(cyl(0.8, 0.8, 4, 8, 0x6a6a60, -2.8, 7, 0.9), cyl(0.8, 0.8, 4, 8, 0x6a6a60, -2.8, 7, -0.9));
-    parts.push(box(1.2, 3.6, 1.1, T.uni2, 0.8, 6.6, 2.3, 0, 0, -0.7), box(1.2, 3.6, 1.1, T.uni2, 0.8, 6.6, -2.3, 0, 0, -0.7)); // دراعات
-    parts.push(sph(1.35, SKIN, 0.2, 9.5, 0));
-    if (team === 'mine') parts.push(cyl(2.5, 2.5, 0.3, 12, T.helm, 0.1, 10.3, 0), sph(1.55, T.helm, 0.1, 10.4, 0, 1, 0.7, 1));
-    else parts.push(cyl(1.55, 1.85, 1.6, 12, T.helm, -0.1, 10.1, 0), sph(1.6, T.helm, 0, 10.8, 0, 1, 0.6, 1));
-    if (kind === 'medic') parts.push(box(0.2, 0.9, 2.4, 0xffffff, 1.45, 6.8, 0), box(0.25, 0.5, 1.4, 0xcc2222, 1.5, 6.8, 0), box(0.25, 1.4, 0.5, 0xcc2222, 1.5, 6.8, 0));
+    parts.push(cap(1.65, 2.6, T.uni, 0, 6.6, 0, 0, 0, 0));                       // جسم
+    parts.push(prep(new THREE.CylinderGeometry(1.75, 1.7, 0.55, 12), 0x3d3220, 0, 5.2, 0));   // حزام
+    parts.push(prep(new THREE.BoxGeometry(1.5, 2.6, 2.8), kind === 'flame' ? 0x55554d : 0x5a4f36, -1.7, 7, 0)); // شنطة
+    if (kind === 'flame') parts.push(cyl(0.8, 0.8, 4, 10, 0x6a6a60, -2.6, 7, 0.9), cyl(0.8, 0.8, 4, 10, 0x6a6a60, -2.6, 7, -0.9));
+    parts.push(cap(0.55, 2.6, T.uni2, 1.0, 6.9, 2.0, 0, 0, -0.9), cap(0.55, 2.6, T.uni2, 1.0, 6.9, -2.0, 0, 0, -0.9));  // دراعات
+    parts.push(sph(0.5, SKIN, 2.2, 6.2, 1.9, 1, 1, 1, 6), sph(0.5, SKIN, 2.2, 6.2, -1.7, 1, 1, 1, 6));                  // إيدين
+    parts.push(cyl(0.55, 0.6, 0.8, 8, SKIN, 0, 8.9, 0), sph(1.2, SKIN, 0.15, 9.8, 0, 1, 1.05, 1, 12), ...helmet(0.1, 10.5, 0));
+    if (kind === 'medic') parts.push(box(0.2, 0.9, 2.4, 0xffffff, 1.6, 7.2, 0), box(0.25, 0.5, 1.4, 0xcc2222, 1.7, 7.2, 0), box(0.25, 1.4, 0.5, 0xcc2222, 1.7, 7.2, 0));
     const wl = kind === 'at' ? 11 : kind === 'short' || kind === 'flame' ? 4.5 : kind === 'none' ? 0 : 8;
-    if (wl) parts.push(box(wl, kind === 'at' ? 0.8 : 0.5, kind === 'at' ? 0.8 : 0.5, kind === 'flame' ? 0x333333 : WOOD, 1.5 + wl / 2 - 2, 6.5, 1.2, 0, 0, 0.08));
+    if (wl) { parts.push(box(wl, kind === 'at' ? 0.75 : 0.45, kind === 'at' ? 0.75 : 0.45, kind === 'flame' ? 0x333333 : WOOD, 1.8 + wl / 2 - 2, 6.4, 0.2, 0, 0, 0.12)); parts.push(box(wl * 0.55, 0.3, 0.3, METAL, 2 + wl * 0.55, 6.75, 0.2, 0, 0, 0.12)); }
   }
   return (geoCache[k] = merge(parts));
 }
 function legGeo(team) {
   const k = 'leg_' + team; if (geoCache[k]) return geoCache[k];
-  const g = merge([box(1.4, 4.2, 1.5, TEAM[team].uni2, 0, -2.1, 0), box(1.8, 0.9, 1.6, 0x2b2318, 0.3, -4.1, 0)]);
+  const g = merge([cap(0.72, 2.9, TEAM[team].uni2, 0, -2.1, 0), prep(new THREE.BoxGeometry(1.9, 0.9, 1.4), 0x2b2318, 0.35, -4.1, 0), cyl(0.75, 0.75, 1.4, 8, 0x6b6550, 0, -3.2, 0)]);
   return (geoCache[k] = g);
 }
 function makeSoldier(team, kind, scale = 1) {
   const g = new THREE.Group();
-  const body = mesh(soldierGeo(team, kind)); g.add(body);
+  const body = mesh(soldierGeo(team, kind), tmat('cloth', 'dry_ground_01', { ns: 0.4, rough: 0.95 })); g.add(body);
   let legs = null;
   if (kind !== 'prone') {
-    legs = [mesh(legGeo(team)), mesh(legGeo(team))];
+    legs = [mesh(legGeo(team), tmat('cloth', 'dry_ground_01', { ns: 0.4, rough: 0.95 })), mesh(legGeo(team), tmat('cloth', 'dry_ground_01', { ns: 0.4, rough: 0.95 }))];
     legs[0].position.set(0, 4.3, 0.95); legs[1].position.set(0, 4.3, -0.95); legs.forEach(l => g.add(l));
   }
   g.scale.setScalar(scale);
@@ -154,9 +198,9 @@ function tankGeo(look, team) {
 }
 function makeTank(look, team, card) {
   const g = new THREE.Group(), gg = tankGeo(look, team);
-  g.add(mesh(gg.hull, mat('flat', { flat: true })));
+  g.add(mesh(gg.hull, tmat('metal', 'green_metal_rust', { metal: 0.3, rough: 0.75 })));
   let tur = null;
-  if (gg.tur) { tur = mesh(gg.tur, mat('flat', { flat: true })); tur.position.y = look === 'car' ? 7.5 : 8; tur.position.x = look === 'ft' ? 2 : 0; g.add(tur); }
+  if (gg.tur) { tur = mesh(gg.tur, tmat('metal', 'green_metal_rust', { metal: 0.3, rough: 0.75 })); tur.position.y = look === 'car' ? 7.5 : 8; tur.position.x = look === 'ft' ? 2 : 0; g.add(tur); }
   // علامة الجنسية
   const m = new THREE.Mesh(new THREE.CircleGeometry(1.8, 16), new THREE.MeshBasicMaterial({ color: team === 'mine' ? 0x2f5d9a : 0xeeeeee }));
   m.rotation.x = -Math.PI / 2; m.position.set(-6, look === 'rhomb' ? 11.1 : look === 'a7v' ? 14.7 : 7.7, 0); g.add(m);
@@ -181,7 +225,7 @@ function gunGeo(look, team) {
 }
 function makeGun(look, team) {
   const g = new THREE.Group();
-  g.add(mesh(gunGeo(look, team), mat('flat', { flat: true })));
+  g.add(mesh(gunGeo(look, team), tmat('metal', 'green_metal_rust', { metal: 0.3, rough: 0.75 })));
   const big = look === 'bertha' ? 2 : look === 'howitzer' ? 1.35 : 1;
   const crew = look === 'mortar' ? [[-5, 4]] : [[-9 * big, 5 * big], [-9 * big, -5 * big]];
   crew.forEach(([x, z]) => { const s = makeSoldier(team, 'none'); s.g.position.set(x, 0, z); g.add(s.g); });
@@ -193,27 +237,29 @@ function sandbagRing(r, n, layers = 2) {
   const p = [];
   for (let L = 0; L < layers; L++) for (let i = 0; i < n; i++) {
     const a = (i + L * 0.5) / n * Math.PI * 2;
-    p.push(prep(new THREE.BoxGeometry(4.2, 1.9, 2.6), i % 2 ? SAND : 0x998a62, Math.cos(a) * r, 1 + L * 1.8, Math.sin(a) * r, 0, -a + Math.PI / 2, 0));
+    p.push(prep(new THREE.CapsuleGeometry(1.15, 2.2, 3, 6).rotateZ(Math.PI / 2), i % 3 ? 0xc9b98e : 0xb5a57c, Math.cos(a) * r, 1.2 + L * 2, Math.sin(a) * r, 0, -a + Math.PI / 2, 0, 1, 0.85, 1.15));
   }
   return p;
 }
-function bunkerGeo() {
-  if (geoCache.bunker) return geoCache.bunker;
-  const p = [...sandbagRing(22, 30, 2)];
-  p.push(cyl(15, 17, 9, 8, 0x8f8b80, 0, 4.5, 0, 0, Math.PI / 8, 0), cyl(13.5, 15, 2.5, 8, 0x9d998c, 0, 10, 0, 0, Math.PI / 8, 0));
-  p.push(box(3, 2, 9, 0x141310, 15.5, 6.5, 0));                       // فتحة الرشاش
-  return (geoCache.bunker = merge(p));
-}
-function hqGeo() {
-  if (geoCache.hq) return geoCache.hq;
-  const p = [...sandbagRing(33, 44, 2)];
-  p.push(box(30, 15, 24, 0xcdbf9f, 0, 7.5, 0));                       // حيطان حجر
-  const roof = new THREE.CylinderGeometry(15, 15, 32, 3, 1); roof.rotateZ(Math.PI / 2); roof.rotateX(Math.PI / 6);
-  p.push(prep(roof, 0x8c4a32, 0, 21.5, 0, 0, 0, 0, 1, 0.55, 0.9));
-  p.push(box(3, 7, 3, 0x7a6a58, -8, 27, 6));
-  for (let i = -1; i <= 1; i += 2) { p.push(box(0.5, 4, 3.5, 0x2a2622, 15.1, 8, i * 6), box(0.5, 4, 3.5, 0x2a2622, -15.1, 8, i * 6)); p.push(box(4, 4, 0.5, 0x2a2622, i * 7, 8, 12.1), box(4, 4, 0.5, 0x2a2622, i * 7, 8, -12.1)); }
-  p.push(box(0.5, 8, 5, 0x4a3020, 15.2, 4, 0));
-  return (geoCache.hq = merge(p));
+const BAGS = () => tmat('bags', 'dry_ground_01', { ns: 0.6 });
+function structGeo(kind) {
+  if (geoCache['st_' + kind]) return geoCache['st_' + kind];
+  let out;
+  if (kind === 'bunker') {
+    out = {
+      bags: merge(sandbagRing(22, 32, 2)),
+      main: merge([cyl(15, 17, 9, 8, 0x9c968a, 0, 4.5, 0, 0, Math.PI / 8, 0), cyl(13.5, 15, 2.5, 8, 0xaaa498, 0, 10, 0, 0, Math.PI / 8, 0)]),
+      dark: merge([box(3, 2, 9, 0x141310, 15.5, 6.5, 0)]),
+    };
+  } else if (kind === 'hq') {
+    const roof = new THREE.CylinderGeometry(15, 15, 32, 3, 1); roof.rotateZ(Math.PI / 2); roof.rotateX(Math.PI / 6);
+    const dark = [];
+    for (let i = -1; i <= 1; i += 2) { dark.push(box(0.5, 4, 3.5, 0x2a2622, 15.1, 8, i * 6), box(0.5, 4, 3.5, 0x2a2622, -15.1, 8, i * 6), box(4, 4, 0.5, 0x2a2622, i * 7, 8, 12.1), box(4, 4, 0.5, 0x2a2622, i * 7, 8, -12.1)); }
+    dark.push(box(0.5, 8, 5, 0x4a3020, 15.2, 4, 0));
+    out = { bags: merge(sandbagRing(33, 46, 2)), walls: merge([box(30, 15, 24, 0xffffff, 0, 7.5, 0), box(3, 7, 3, 0xd8d0c0, -8, 27, 6)]), roof: merge([prep(roof, 0xffffff, 0, 21.5, 0, 0, 0, 0, 1, 0.55, 0.9)]), dark: merge(dark) };
+  } else if (kind === 'wall') out = { bags: merge(sandbagRing(13, 18, 2)), dark: merge([cyl(10, 10, 0.4, 16, 0x2f2519, 0, 0.3, 0)]) };
+  else out = { bags: merge(sandbagRing(15, 20, 2)) };
+  return (geoCache['st_' + kind] = out);
 }
 function flag(team, h) {
   const g = new THREE.Group();
@@ -224,107 +270,126 @@ function flag(team, h) {
 }
 function makeStruct(e, team) {
   const g = new THREE.Group(); let gun = null, fl = null;
+  const G = structGeo(e.kind === 'fortgun' ? 'fort' : e.kind);
+  g.add(mesh(G.bags, BAGS()));
+  if (G.dark) g.add(mesh(G.dark, mat('v')));
   if (e.kind === 'hq') {
-    g.add(mesh(hqGeo(), mat('flat', { flat: true })));
+    g.add(mesh(G.walls, tmat('wall', 'rustic_stone_wall', { color: 1 }))); g.add(mesh(G.roof, tmat('roof', 'clay_roof_tiles', { color: 1 })));
     const cannon = makeGun('gun', team); cannon.g.scale.setScalar(1.1); cannon.g.position.set(24, 0, 0); g.add(cannon.g); gun = cannon.g;
     fl = flag(team, 30); fl.position.set(-12, 0, -10); g.add(fl);
   } else if (e.kind === 'bunker') {
-    g.add(mesh(bunkerGeo(), mat('flat', { flat: true })));
+    g.add(mesh(G.main, tmat('concrete', 'concrete_wall_008', { color: 1 })));
     fl = flag(team, 18); fl.position.set(-6, 11, -6); g.add(fl);
-  } else if (e.kind === 'wall') {
-    g.add(mesh(merge([...sandbagRing(13, 18, 2), cyl(10, 10, 0.4, 16, 0x2f2519, 0, 0.3, 0)]), mat('flat', { flat: true })));
-  } else {
-    g.add(mesh(merge(sandbagRing(15, 20, 2)), mat('flat', { flat: true })));
-    const c = makeGun('gun', team); g.add(c.g); gun = c.g;
+  } else if (e.kind === 'fortgun') { const c = makeGun('gun', team); g.add(c.g); gun = c.g; }
+  // صناديق ذخيرة جنب التحصين
+  if ((e.kind === 'hq' || e.kind === 'bunker') && A.models.wooden_military_crate) {
+    const n = e.kind === 'hq' ? 3 : 1;
+    for (let i = 0; i < n; i++) { const m = A.models[['wooden_military_crate', 'ammo_box', 'barrel_03'][i % 3]]; if (!m) continue; const c = m.clone(); c.scale.setScalar(7); c.position.set(-20 - i * 6, 0, 18 + i * 4); c.rotation.y = i * 1.3; g.add(c); }
   }
   return { g, gun, fl };
 }
 
 // ---------- الأرض والديكور ----------
 function treeGeo(kind, s) {
-  const p = [];
+  const trunk = [], crown = [];
   if (kind === 'dead') {
-    p.push(cyl(0.9, 1.4, 12 + s * 8, 6, 0x3a2e22, 0, 6 + s * 4, 0, 0.1, 0, 0.12));
-    p.push(cyl(0.4, 0.6, 7, 5, 0x3a2e22, 2, 10, 1, 0.5, 0, -0.8), cyl(0.4, 0.6, 6, 5, 0x3a2e22, -2, 12, -1, -0.6, 0, 0.9));
-    return merge(p);
+    trunk.push(cyl(0.9, 1.4, 12 + s * 8, 6, 0x6a5a48, 0, 6 + s * 4, 0, 0.1, 0, 0.12));
+    trunk.push(cyl(0.4, 0.6, 7, 5, 0x6a5a48, 2, 10, 1, 0.5, 0, -0.8), cyl(0.4, 0.6, 6, 5, 0x6a5a48, -2, 12, -1, -0.6, 0, 0.9));
+    return { trunk: merge(trunk) };
   }
-  if (kind === 'scrub') { p.push(prep(new THREE.IcosahedronGeometry(3 + s * 2, 0), 0x5a6a38, 0, 2.5, 0, 0, s * 3, 0, 1, 0.7, 1)); return merge(p); }
+  if (kind === 'scrub') { crown.push(prep(new THREE.IcosahedronGeometry(3 + s * 2, 1), 0x7a8a50, 0, 2.5, 0, 0, s * 3, 0, 1, 0.7, 1)); return { crown: merge(crown) }; }
   const h = kind === 'poplar' ? 22 : 10 + s * 6;
-  p.push(cyl(0.9, 1.3, h * 0.6, 6, 0x4a3726, 0, h * 0.3, 0));
-  const cols = [0x4b6a2f, 0x56763a, 0x3f5c28];
-  if (kind === 'poplar') p.push(prep(new THREE.IcosahedronGeometry(4.5, 1), cols[0], 0, h * 0.7, 0, 0, 0, 0, 1, 2.6, 1));
-  else for (let i = 0; i < 4; i++) p.push(prep(new THREE.IcosahedronGeometry(4 + s * 3, 1), cols[i % 3], Math.cos(i * 1.7) * 3, h * 0.75 + (i % 2) * 2, Math.sin(i * 1.7) * 3));
-  return merge(p);
+  trunk.push(cyl(0.9, 1.3, h * 0.6, 6, 0x7a6450, 0, h * 0.3, 0));
+  const cols = [0x6d9a40, 0x7aa84a, 0x5f8a38];
+  if (kind === 'poplar') crown.push(prep(new THREE.IcosahedronGeometry(4.5, 2), cols[0], 0, h * 0.7, 0, 0, 0, 0, 1, 2.6, 1));
+  else for (let i = 0; i < 4; i++) crown.push(prep(new THREE.IcosahedronGeometry(4 + s * 3, 2), cols[i % 3], Math.cos(i * 1.7) * 3, h * 0.75 + (i % 2) * 2, Math.sin(i * 1.7) * 3));
+  return { trunk: merge(trunk), crown: merge(crown) };
 }
 function houseGeo(s, ruined) {
-  const w = 18 + s * 10, d = 13 + s * 6, h = 10 + s * 3, p = [];
-  const wall = s < 0.5 ? 0xd8ccb0 : 0xbfae8e;
+  const w = 18 + s * 10, d = 13 + s * 6, h = 10 + s * 3;
+  const wall = s < 0.5 ? 0xf0e8d8 : 0xd8ccb8;
   if (ruined) {
-    p.push(box(w, h * 0.8, 1.5, wall, 0, h * 0.4, d / 2), box(1.5, h * 0.5, d, wall, w / 2, h * 0.25, 0), box(w * 0.4, h * 0.3, 1.5, wall, -w * 0.3, h * 0.15, -d / 2));
-    for (let i = 0; i < 9; i++) p.push(box(2 + (i % 3), 1.2, 1.5 + (i % 2), i % 2 ? wall : 0x9c8f7a, (i * 7 % 11 - 5) * w / 12, 0.6, (i * 5 % 7 - 3) * d / 8, 0, i, 0));
-    return merge(p);
+    const p = [box(w, h * 0.8, 1.5, wall, 0, h * 0.4, d / 2), box(1.5, h * 0.5, d, wall, w / 2, h * 0.25, 0), box(w * 0.4, h * 0.3, 1.5, wall, -w * 0.3, h * 0.15, -d / 2)];
+    for (let i = 0; i < 9; i++) p.push(box(2 + (i % 3), 1.2, 1.5 + (i % 2), i % 2 ? wall : 0xb8ab96, (i * 7 % 11 - 5) * w / 12, 0.6, (i * 5 % 7 - 3) * d / 8, 0, i, 0));
+    return { walls: merge(p) };
   }
-  p.push(box(w, h, d, wall, 0, h / 2, 0));
   const roof = new THREE.CylinderGeometry(d * 0.62, d * 0.62, w + 2, 3, 1); roof.rotateZ(Math.PI / 2); roof.rotateX(Math.PI / 6);
-  p.push(prep(roof, s < 0.4 ? 0x8a4a33 : 0x6d5a4a, 0, h + d * 0.28, 0, 0, 0, 0, 1, 0.75, 1));
-  p.push(box(2.5, 6, 2.5, 0x7a6a58, w * 0.3, h + d * 0.4, d * 0.15));
-  for (let i = -1; i <= 1; i += 2) p.push(box(3, 3, 0.4, 0x2a2622, i * w / 4, h * 0.6, d / 2 + 0.1), box(3, 3, 0.4, 0x2a2622, i * w / 4, h * 0.6, -d / 2 - 0.1));
-  return merge(p);
+  const dark = []; for (let i = -1; i <= 1; i += 2) dark.push(box(3, 3, 0.4, 0x2a2622, i * w / 4, h * 0.6, d / 2 + 0.1), box(3, 3, 0.4, 0x2a2622, i * w / 4, h * 0.6, -d / 2 - 0.1));
+  return { walls: merge([box(w, h, d, wall, 0, h / 2, 0), box(2.5, 6, 2.5, 0xd0c4b0, w * 0.3, h + d * 0.4, d * 0.15)]), roof: merge([prep(roof, 0xffffff, 0, h + d * 0.28, 0, 0, 0, 0, 1, 0.75, 1)]), dark: merge(dark), slate: s >= 0.4 };
 }
 function buildProps(props) {
   const groups = {};
-  const add = (key, geo, x, y, rot = 0, sc = 1) => { const g = geo.clone(); g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(...[W3(x, y)[0], 0, W3(x, y)[1]]), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rot, 0)), new THREE.Vector3(sc, sc, sc))); (groups[key] = groups[key] || []).push(g); };
+  const place = (geo, x, y, rot = 0, sc = 1) => { const g = geo.clone(); const [wx, wz] = W3(x, y); g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(wx, 0, wz), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, rot, 0)), new THREE.Vector3(sc, sc, sc))); return g; };
+  const add = (key, geo, x, y, rot, sc) => { if (geo) (groups[key] = groups[key] || []).push(place(geo, x, y, rot, sc)); };
+  const addHouse = (hg, x, y, rot, sc) => { add('houseWall', hg.walls, x, y, rot, sc); add(hg.slate ? 'roofSlate' : 'roofTile', hg.roof, x, y, rot, sc); add('dark', hg.dark, x, y, rot, sc); };
   props.forEach(p => {
-    if (p.t === 'tree') add('tree', treeGeo(p.kind, p.s), p.x, p.y, p.s * 6, 1.35);
-    if (p.t === 'ruin') add('ruin', houseGeo(p.s, true), p.x, p.y, p.s * 6, 1.1);
+    if (p.t === 'tree') { const t = treeGeo(p.kind, p.s); add('trunk', t.trunk, p.x, p.y, p.s * 6, 1.35); add('crown', t.crown, p.x, p.y, p.s * 6, 1.35); }
+    if (p.t === 'ruin') add('ruin', houseGeo(p.s, true).walls, p.x, p.y, p.s * 6, 1.1);
   });
-  // بيوت ريفية على الأطراف (مش في طريق الوحدات)
   rs = 9917;
   const nh = map.sand ? 1 : 4;
   for (let i = 0; i < nh; i++) {
     const side = i % 2 ? 1 : -1, x = side > 0 ? 330 + R() * 6 : 24 + R() * 6, y = 70 + R() * 500;
     if (Math.abs(y - 320) < 40) continue;
-    add(R() < (map.ruins > 5 ? 0.7 : 0.25) ? 'ruin' : 'house', houseGeo(R(), false), x, y, Math.PI / 2 + (R() - 0.5) * 0.4, 1.3);
+    if (R() < (map.ruins > 5 ? 0.7 : 0.25)) add('ruin', houseGeo(R(), true).walls, x, y, Math.PI / 2, 1.3);
+    else addHouse(houseGeo(R(), false), x, y, Math.PI / 2 + (R() - 0.5) * 0.4, 1.3);
   }
-  // أوتاد الأسلاك الشائكة
   const wy = [388, 252, ...(map.wire || []).flatMap(w => [w.y, WHd - w.y])];
-  const post = merge([cyl(0.3, 0.3, 4, 4, 0x3b3226, 0, 2, 0, 0.5, 0, 0), cyl(0.3, 0.3, 4, 4, 0x3b3226, 0, 2, 0, -0.5, 0, 0)]);
+  const post = merge([cyl(0.3, 0.3, 4, 4, 0x6b5a46, 0, 2, 0, 0.5, 0, 0), cyl(0.3, 0.3, 4, 4, 0x6b5a46, 0, 2, 0, -0.5, 0, 0)]);
   wy.forEach(y => { for (let x = 6; x < WWd; x += 9) add('post', post, x, y + (R() - 0.5) * 3, R() * 3); });
-  // كباري
-  (map.rivers || []).forEach(rv => rv.bridges.forEach(bx => {
-    const b = merge([box(22, 1.2, rv.h + 12, 0x6e5233, 0, 1.2, 0), box(1, 2.5, rv.h + 12, 0x3c2c1b, 11, 2.6, 0), box(1, 2.5, rv.h + 12, 0x3c2c1b, -11, 2.6, 0)]);
-    add('bridge', b, bx, rv.y);
-  }));
-  for (const k in groups) { const m = mesh(merge(groups[k]), mat('flat', { flat: true }), k !== 'post'); m.receiveShadow = true; world.add(m); }
+  (map.rivers || []).forEach(rv => rv.bridges.forEach(bx => add('bridge', merge([box(22, 1.2, rv.h + 12, 0xc8b8a0, 0, 1.2, 0), box(1, 2.5, rv.h + 12, 0x8a7a64, 11, 2.6, 0), box(1, 2.5, rv.h + 12, 0x8a7a64, -11, 2.6, 0)]), bx, rv.y)));
+  const MATS = {
+    houseWall: () => tmat('hwall', 'plastered_stone_wall', { color: 1 }), roofTile: () => tmat('roof', 'clay_roof_tiles', { color: 1 }), roofSlate: () => tmat('slate', 'roof_slates_02', { color: 1 }),
+    ruin: () => tmat('ruin', 'rustic_stone_wall', { color: 1 }), dark: () => mat('v'), trunk: () => tmat('bark', 'rough_wood', { color: 1 }), crown: () => tmat('leaves', 'forest_leaves_02', { ns: 1.5 }),
+    post: () => mat('v'), bridge: () => tmat('planks', 'weathered_planks', { color: 1 }),
+  };
+  for (const k in groups) { const m = mesh(merge(groups[k]), MATS[k](), k !== 'post'); world.add(m); }
+  // موديلات حقيقية: شجيرات وصخور وجذوع وكاوتش
+  const scatter = (id, n, sc, zone) => { const m = A.models[id]; if (!m) return; for (let i = 0; i < n; i++) {
+    let x, y, k = 0; do { x = 8 + R() * 344; y = 20 + R() * 600; k++; } while (k < 20 && (Math.abs(x - 90) < 30 || Math.abs(x - 270) < 30 || Math.abs(y - 320) < 30 || (zone && !zone(x, y))));
+    const c = m.clone(); const [wx, wz] = W3(x, y); c.position.set(wx, 0, wz); c.rotation.y = R() * 6.28; c.scale.setScalar(sc * (0.7 + R() * 0.6)); world.add(c); } };
+  const green = !map.sand && map.grass > 0.3;
+  if (green) scatter('shrub_03', 26, 4);
+  if (map.sand) scatter('shrub_03', 14, 3.5);
+  scatter('rock_07', map.sand || map.ridges ? 14 : 5, 4);
+  if (map.trees === 'dead' || map.ruins > 3) { scatter('tree_stump_01', 8, 5); scatter('old_tyre', 3, 5); }
+}
+function noiseCanvas(seed) {
+  const c = document.createElement('canvas'); c.width = 64; c.height = 112; const g = c.getContext('2d'); rs = seed;
+  g.fillStyle = '#000'; g.fillRect(0, 0, 64, 112);
+  for (let i = 0; i < 60; i++) { const x = R() * 64, y = R() * 112, r = 6 + R() * 16, gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(255,255,255,${0.35 + R() * 0.4})`); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 112); }
+  const t = new THREE.CanvasTexture(c); return t;
 }
 function buildGround(seed) {
-  texScale = Math.min(3, Math.max(2, Math.round((window.devicePixelRatio || 2))));
-  if (/Android|iPhone|iPad/i.test(navigator.userAgent)) texScale = 2;
-  const t = GFX.terrainFor(mapId, seed, texScale);
+  texScale = /Android|iPhone|iPad/i.test(navigator.userAgent) ? 2 : 3;
+  const t = GFX.terrainFor(mapId, seed, texScale, true);
   terrainCanvas = t.color;
   terrainTex = new THREE.CanvasTexture(t.color); terrainTex.colorSpace = THREE.SRGBColorSpace; terrainTex.anisotropy = 4;
   const htex = new THREE.CanvasTexture(t.height);
   const geo = new THREE.PlaneGeometry(WWd, WHd, 180, 320); geo.rotateX(-Math.PI / 2);
-  const m = new THREE.MeshStandardMaterial({ map: terrainTex, displacementMap: htex, displacementScale: 9, displacementBias: -4.5, bumpMap: htex, bumpScale: 3, roughness: 0.95 });
-  // تفاصيل دقيقة متكررة (حبيبات تراب وعشب) فوق صورة الأرض
-  const dc = document.createElement('canvas'); dc.width = dc.height = 256; const dg = dc.getContext('2d');
-  dg.fillStyle = '#808080'; dg.fillRect(0, 0, 256, 256);
-  for (let i = 0; i < 9000; i++) { const v = 90 + Math.random() * 90 | 0; dg.fillStyle = `rgba(${v},${v},${v},0.5)`; dg.fillRect(Math.random() * 256, Math.random() * 256, 1 + Math.random() * 2, 1 + Math.random() * 2); }
-  for (let i = 0; i < 1400; i++) { const x = Math.random() * 256, y = Math.random() * 256, v = Math.random() < 0.5 ? 60 : 200; dg.strokeStyle = `rgba(${v},${v},${v},0.35)`; dg.lineWidth = 0.8; dg.beginPath(); dg.moveTo(x, y); dg.lineTo(x + (Math.random() - 0.5) * 3, y - 2 - Math.random() * 3); dg.stroke(); }
-  const detail = new THREE.CanvasTexture(dc); detail.wrapS = detail.wrapT = THREE.RepeatWrapping;
+  const [ga, gb] = GROUND[mapId] || GROUND.mons, TA = A.tex[ga] || {}, TB = A.tex[gb] || {};
+  const m = new THREE.MeshStandardMaterial({ map: terrainTex, displacementMap: htex, displacementScale: 9, displacementBias: -4.5, normalMap: TA.normal || null, roughness: 0.95 });
+  if (m.normalMap) { m.normalMap = TA.normal.clone(); m.normalMap.repeat.set(5, 8.9); m.normalMap.wrapS = m.normalMap.wrapT = THREE.RepeatWrapping; m.normalMap.needsUpdate = true; m.normalScale = new THREE.Vector2(1.3, 1.3); }
+  const mask = noiseCanvas(seed);
   m.onBeforeCompile = sh => {
-    sh.uniforms.detailMap = { value: detail };
-    sh.fragmentShader = 'uniform sampler2D detailMap;\n' + sh.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\n diffuseColor.rgb *= mix(0.72, 1.28, texture2D(detailMap, vMapUv * vec2(14.0, 25.0)).r) * mix(0.85, 1.15, texture2D(detailMap, vMapUv * vec2(3.0, 5.3)).g);');
+    sh.uniforms.texA = { value: TA.map }; sh.uniforms.texB = { value: TB.map || TA.map }; sh.uniforms.maskT = { value: mask }; sh.uniforms.groundTint = { value: new THREE.Vector3(...(TINT[mapId] || [0.8, 0.8, 0.8])) };
+    sh.fragmentShader = 'uniform sampler2D texA; uniform sampler2D texB; uniform sampler2D maskT; uniform vec3 groundTint;\n' + sh.fragmentShader.replace('#include <map_fragment>', `
+      vec4 feat = texture2D(map, vMapUv);
+      vec2 tuv = vMapUv * vec2(5.0, 8.9);
+      vec3 ca = mix(texture2D(texA, tuv).rgb, texture2D(texA, tuv * 0.41 + vec2(0.17, 0.53)).rgb, 0.5);
+      vec3 cb = mix(texture2D(texB, tuv * 1.37 + 0.31).rgb, texture2D(texB, tuv * 0.53 + vec2(0.71, 0.29)).rgb, 0.5);
+      float mk = smoothstep(0.25, 0.75, texture2D(maskT, vMapUv).r);
+      vec3 base = mix(ca, cb, mk) * groundTint;
+      diffuseColor.rgb = mix(base, feat.rgb, feat.a);`);
   };
   const ground = new THREE.Mesh(geo, m); ground.receiveShadow = true; world.add(ground);
-  // حواف الخريطة: أرض ممتدة غامقة
-  const out = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400), new THREE.MeshStandardMaterial({ color: new THREE.Color(map.base[1]).multiplyScalar(0.8), roughness: 1 }));
-  out.rotation.x = -Math.PI / 2; out.position.y = -4.6; out.receiveShadow = true; world.add(out);
+  const out = new THREE.Mesh(new THREE.PlaneGeometry(2400, 2400), new THREE.MeshStandardMaterial({ color: 0xffffff, map: TA.map ? (() => { const x = TA.map.clone(); x.repeat.set(33, 33); x.needsUpdate = true; return x; })() : null, roughness: 1 }));
+  out.material.color.multiplyScalar(0.75); out.rotation.x = -Math.PI / 2; out.position.y = -4.6; out.receiveShadow = true; world.add(out);
   (map.rivers || []).forEach(rv => {
-    const w = new THREE.Mesh(new THREE.PlaneGeometry(WWd + 400, rv.h), new THREE.MeshStandardMaterial({ color: 0x3a5a5c, roughness: 0.12, metalness: 0.35, transparent: true, opacity: 0.88 }));
+    const w = new THREE.Mesh(new THREE.PlaneGeometry(WWd + 400, rv.h), new THREE.MeshStandardMaterial({ color: 0x31504f, roughness: 0.06, metalness: 0.1, transparent: true, opacity: 0.9 }));
     w.rotation.x = -Math.PI / 2; w.position.set(0, -1.5, rv.y - WHd / 2); world.add(w);
   });
-  if (map.sand) [-WHd / 2 - 40, WHd / 2 + 40].forEach(z => { const s = new THREE.Mesh(new THREE.PlaneGeometry(2400, 120), new THREE.MeshStandardMaterial({ color: 0x2f5866, roughness: 0.15, metalness: 0.3 })); s.rotation.x = -Math.PI / 2; s.position.set(0, -3, z); world.add(s); });
+  if (map.sand) [-WHd / 2 - 40, WHd / 2 + 40].forEach(z => { const s = new THREE.Mesh(new THREE.PlaneGeometry(2400, 120), new THREE.MeshStandardMaterial({ color: 0x2f5866, roughness: 0.08, metalness: 0.1 })); s.rotation.x = -Math.PI / 2; s.position.set(0, -3, z); world.add(s); });
   buildProps(t.props);
 }
 
@@ -590,7 +655,7 @@ const GFX3 = {
     renderer = new THREE.WebGLRenderer({ canvas: c, antialias: true, powerPreference: 'high-performance' });
     renderer.setPixelRatio(Math.min(/Android|iPhone|iPad/i.test(navigator.userAgent) ? 1.5 : 2, window.devicePixelRatio || 1));
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.3;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 0.92;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     bannerHost = c.parentElement;
   },
@@ -608,17 +673,25 @@ const GFX3 = {
     sun.position.set(-160, 320, viewer === 1 ? -120 : 120); sun.castShadow = true;
     sun.shadow.mapSize.set(/Android|iPhone|iPad/i.test(navigator.userAgent) ? 1024 : 2048, /Android|iPhone|iPad/i.test(navigator.userAgent) ? 1024 : 2048); const sc = sun.shadow.camera; sc.left = -260; sc.right = 260; sc.top = 380; sc.bottom = -380; sc.near = 50; sc.far = 900; sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.6;
     scene.add(sun); scene.add(sun.target);
+    A.ready = false;
+    const myScene = scene;
+    preload(mid).then(() => {
+      if (scene !== myScene || !renderer) return;
+      if (A.envRaw && !A.env) { const pm = new THREE.PMREMGenerator(renderer); A.env = pm.fromEquirectangular(A.envRaw).texture; pm.dispose(); }
+      if (A.env) { scene.environment = A.env; scene.environmentIntensity = 0.4; hemi.intensity = 0.55; }
     buildGround(seed);
-    initFx();
-    // شبح النزول
-    ghostGroup = new THREE.Group(); scene.add(ghostGroup);
-    const redMat = new THREE.MeshBasicMaterial({ color: 0xc82818, transparent: true, opacity: 0.22, depthWrite: false });
-    redA = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), redMat); redB = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), redMat.clone()); const redC = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), redMat.clone());
-    [redA, redB, redC].forEach(m => { m.rotation.x = -Math.PI / 2; m.position.y = 6; world.add(m); m.visible = false; }); redA.userData.c = redC;
-    ghostRing = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthTest: false, side: THREE.DoubleSide }));
-    ghostRing.rotation.x = -Math.PI / 2; ghostRing.renderOrder = 20; world.add(ghostRing); ghostRing.visible = false;
-    ghostRange = new THREE.Mesh(new THREE.RingGeometry(0.97, 1, 64), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, depthTest: false, side: THREE.DoubleSide }));
-    ghostRange.rotation.x = -Math.PI / 2; ghostRange.renderOrder = 19; world.add(ghostRange); ghostRange.visible = false;
+      initFx();
+      // شبح النزول
+      ghostGroup = new THREE.Group(); scene.add(ghostGroup);
+      const redMat = new THREE.MeshBasicMaterial({ color: 0xc82818, transparent: true, opacity: 0.22, depthWrite: false });
+      redA = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), redMat); redB = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), redMat.clone()); const redC = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), redMat.clone());
+      [redA, redB, redC].forEach(m => { m.rotation.x = -Math.PI / 2; m.position.y = 6; world.add(m); m.visible = false; }); redA.userData.c = redC;
+      ghostRing = new THREE.Mesh(new THREE.RingGeometry(0.85, 1, 40), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9, depthTest: false, side: THREE.DoubleSide }));
+      ghostRing.rotation.x = -Math.PI / 2; ghostRing.renderOrder = 20; world.add(ghostRing); ghostRing.visible = false;
+      ghostRange = new THREE.Mesh(new THREE.RingGeometry(0.97, 1, 64), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.3, depthTest: false, side: THREE.DoubleSide }));
+      ghostRange.rotation.x = -Math.PI / 2; ghostRange.renderOrder = 19; world.add(ghostRange); ghostRange.visible = false;
+      A.ready = true; GFX3.resize();
+    });
     GFX3.resize();
   },
   resize() {
@@ -635,8 +708,10 @@ const GFX3 = {
   fx: onFx,
   banner,
   dispose() { try { scene && scene.traverse(o => { if (o.geometry && !Object.values(geoCache).includes(o.geometry)) o.geometry.dispose(); }); terrainTex && terrainTex.dispose(); renderer && renderer.dispose(); renderer && renderer.forceContextLoss(); } catch (e) {} renderer = null; },
+  ready() { return A.ready; },
   frame(view, dt) {
     sndBudget = 0;
+    if (!A.ready) { renderer.render(scene, camera); return; }
     // قياس السرعة: بعد أول ثانيتين، لو الإطار أبطأ من 40 مللي نقلّل الدقة ثم الضل
     if (dt > 0 && dt < 0.5) { perf.n++; perf.sum += dt; }
     if (perf.n >= 60) {
