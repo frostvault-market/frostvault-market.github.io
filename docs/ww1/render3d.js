@@ -19,6 +19,7 @@ let ghostGroup, ghostRing, ghostRange, redA, redB;
 let rs = 1; const R = () => { rs = (rs + 0x6D2B79F5) | 0; let t = rs; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 const W3 = (x, y) => [x - WWd / 2, y - WHd / 2]; // من إحداثيات اللعبة لإحداثيات الأرض
 let shakeAmt = 0, camBase = null, bannerHost = null;
+const perf = { n: 0, sum: 0, level: 0 }; // جودة تلقائية: لو التليفون بطيء نقلّل
 
 // ---------- مساعدات بناء الموديلات ----------
 function tint(geo, color) {
@@ -587,7 +588,7 @@ const GFX3 = {
   init(c) {
     cv = c;
     renderer = new THREE.WebGLRenderer({ canvas: c, antialias: true, powerPreference: 'high-performance' });
-    renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    renderer.setPixelRatio(Math.min(/Android|iPhone|iPad/i.test(navigator.userAgent) ? 1.5 : 2, window.devicePixelRatio || 1));
     renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.3;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -595,6 +596,7 @@ const GFX3 = {
   },
   setup(mid, seed, viewer) {
     mapId = mid; map = MAPS[mid]; me = viewer;
+    perf.n = perf.sum = perf.level = 0;
     vis.clear(); tracers = []; planes = []; lights = []; zoneVis.clear();
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x1d2016);
@@ -604,7 +606,7 @@ const GFX3 = {
     hemi = new THREE.HemisphereLight(0xe8eef4, 0x6a5a40, 1.5); scene.add(hemi);
     sun = new THREE.DirectionalLight(0xfff1d6, map.fog ? 1.6 : 2.6);
     sun.position.set(-160, 320, viewer === 1 ? -120 : 120); sun.castShadow = true;
-    sun.shadow.mapSize.set(2048, 2048); const sc = sun.shadow.camera; sc.left = -260; sc.right = 260; sc.top = 380; sc.bottom = -380; sc.near = 50; sc.far = 900; sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.6;
+    sun.shadow.mapSize.set(/Android|iPhone|iPad/i.test(navigator.userAgent) ? 1024 : 2048, /Android|iPhone|iPad/i.test(navigator.userAgent) ? 1024 : 2048); const sc = sun.shadow.camera; sc.left = -260; sc.right = 260; sc.top = 380; sc.bottom = -380; sc.near = 50; sc.far = 900; sun.shadow.bias = -0.0008; sun.shadow.normalBias = 0.6;
     scene.add(sun); scene.add(sun.target);
     buildGround(seed);
     initFx();
@@ -635,6 +637,16 @@ const GFX3 = {
   dispose() { try { scene && scene.traverse(o => { if (o.geometry && !Object.values(geoCache).includes(o.geometry)) o.geometry.dispose(); }); terrainTex && terrainTex.dispose(); renderer && renderer.dispose(); renderer && renderer.forceContextLoss(); } catch (e) {} renderer = null; },
   frame(view, dt) {
     sndBudget = 0;
+    // قياس السرعة: بعد أول ثانيتين، لو الإطار أبطأ من 40 مللي نقلّل الدقة ثم الضل
+    if (dt > 0 && dt < 0.5) { perf.n++; perf.sum += dt; }
+    if (perf.n >= 60) {
+      const avg = perf.sum / perf.n; perf.n = perf.sum = 0;
+      if (avg > 0.04 && perf.level < 2) {
+        perf.level++;
+        if (perf.level === 1) { renderer.setPixelRatio(1); GFX3.resize(); }
+        if (perf.level === 2) { renderer.shadowMap.enabled = false; scene.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
+      }
+    }
     const { ents, t, ghost } = view;
     syncEnts(ents, t, dt);
     stepParts(dt); stepTracers(dt);

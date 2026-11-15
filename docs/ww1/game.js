@@ -103,9 +103,11 @@ function showMenu() {
     <button class="big" data-go="deck">🎖️ تجهيز الكتيبة</button>
     <button class="big" data-go="shop">📦 صناديق الإمداد</button>
     <button class="big" data-go="rules">📖 طريقة اللعب</button>
+    <button class="gfxbtn" id="gfx">🎨 الجرافيك: ${P.gfx === '2d' ? 'بسيط (أسرع)' : '3D'}</button>
   </div>`;
   $('#pname').onchange = e => { P.name = e.target.value.trim().slice(0, 16) || P.name; save(); };
   $('#mute').onclick = () => { $('#mute').textContent = SFX.toggle() ? '🔊' : '🔇'; };
+  $('#gfx').onclick = () => { P.gfx = P.gfx === '2d' ? '3d' : '2d'; save(); showMenu(); toast(P.gfx === '2d' ? 'الجرافيك البسيط أسرع على التليفونات الضعيفة' : 'جرافيك 3D'); };
 }
 document.addEventListener('click', e => {
   const g = e.target.closest('[data-go]'); if (!g) return;

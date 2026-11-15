@@ -177,3 +177,4 @@ select{font:inherit;padding:8px;border-radius:8px;border:2px solid #8a6d2f;backg
 .bigphoto{height:190px;border-radius:10px;background-size:cover;background-position:center;filter:sepia(.25) contrast(1.06);margin-bottom:4px;box-shadow:inset 0 0 0 2px #8a6d2f}
 .credit{font-size:10px;opacity:.65;margin-bottom:6px;direction:ltr;text-align:left}
 .credits{font-size:11px;line-height:1.6;opacity:.8;direction:ltr;text-align:left;max-height:240px;overflow:auto;background:#0003;padding:6px;border-radius:8px}
+.gfxbtn{display:block;margin:6px auto 0;background:#0004;color:#efe4c4;border-color:#5a4a2a;font-size:13px}
