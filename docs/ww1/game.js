@@ -33,11 +33,18 @@ function photo(id) { return typeof PHOTOS !== 'undefined' && PHOTOS[id] ? PHOTOS
 function cardArt(c) { const p = photo(c.id); return p ? `<div class="art ph" style="background-image:url('${p.f}')"></div>` : `<div class="art">${icon(c)}</div>`; }
 function lvlOf(id) { return Math.max(1, cardLevel(P.owned[id] || 0)); }
 function cardHTML(c, extra = '', cls = '', lvl) {
-  const nat = NATIONS[c.nat];
+  const nat = NATIONS[c.nat], ph = photo(c.id);
+  if (ph) return `<div class="card ${c.kind} r-${c.rarity} hasart ${cls}" ${extra}>
+    <div class="cart${ph.r ? ' render' : ''}" style="background-image:url('${ph.f}')"></div>
+    <div class="cost">${c.cost}</div>
+    <div class="ctag" style="background:${nat.c}">${c.kind === 'tactic' ? 'تكتيك' : TYPE_TEXT[c.type]}</div>
+    ${lvl ? `<div class="lvl">⭐${lvl}</div>` : ''}
+    <div class="cplate"><div class="cname">${esc(c.name)}</div><div class="ctext">${cardText(c)}</div></div>
+  </div>`;
   return `<div class="card ${c.kind} r-${c.rarity} ${cls}" ${extra}>
     <div class="cost">${c.cost}</div>
     <div class="nat" style="background:${nat.c}">${c.kind === 'tactic' ? 'تكتيك' : TYPE_TEXT[c.type] + ' · ' + nat.n}</div>
-    ${cardArt(c)}
+    <div class="art">${icon(c)}</div>
     <div class="cname">${esc(c.name)}</div>
     <div class="ctext">${cardText(c)}</div>
     ${lvl ? `<div class="lvl">مستوى ${lvl}</div>` : ''}
@@ -55,7 +62,7 @@ function fullInfo(c) {
   const own = P.owned[c.id] || 0, l = cardLevel(own);
   const prog = own && l < 5 ? `<p class="muted">مستوى ${l} · عندك ${own} نسخة، المستوى ${l + 1} محتاج ${LEVEL_NEED[l + 1]}. كل مستوى = +7% صحة وضرر.</p>` : own ? '<p class="muted">مستوى 5 (الأقصى)</p>' : '';
   const ph = photo(c.id);
-  return `${ph ? `<div class="bigphoto" style="background-image:url('${ph.f}')"></div><div class="credit">📷 ${esc(ph.a || 'غير معروف')} · ${esc(ph.l)} · Wikimedia Commons</div>` : ''}<div class="info-name">${esc(c.name)} <small>${esc(c.en)} · ${RARITY_TEXT[c.rarity]}</small></div>
+  return `${ph ? `<div class="bigphoto${ph.r ? ' render' : ''}" style="background-image:url('${ph.f}')"></div>${ph.r ? '' : `<div class="credit">📷 ${esc(ph.a || 'غير معروف')} · ${esc(ph.l)} · Wikimedia Commons</div>`}` : ''}<div class="info-name">${esc(c.name)} <small>${esc(c.en)} · ${RARITY_TEXT[c.rarity]}</small></div>
     ${c.kind === 'tactic' ? `<p>${esc(c.text)}</p>` : `<p class="stl">${TYPE_TEXT[c.type]} · ${NATIONS[c.nat].n}<br>${cardStatsLine(c.id, l || 1)}</p>`}
     ${kw ? `<ul>${kw}</ul>` : ''}${prog}${c.fact ? `<p class="fact">📜 ${esc(c.fact)}</p>` : ''}`;
 }
@@ -130,7 +137,7 @@ function showRules() {
   <h3>الخرايط</h3><p>9 خرايط من جبهات حقيقية. فيها أنهار مش بتتعدّي غير من الكباري، وطين بيبطّأ، وأسلاك شائكة بتعطّل المشاة.</p>
   <h3>الكتيبة والمستويات</h3><p>بتدخل المعركة بـ ${RT_DECK_TROOPS} كروت وحدات و ${RT_DECK_TACTICS} تكتيكات، كل كارت مرة واحدة. في إيدك 4 كروت، ولما تلعب واحد بييجي اللي بعده. النسخ المكررة من الصناديق بتعلّي <b>مستوى</b> الكارت (+7% صحة وضرر لكل مستوى).</p>
   <h3>صور الكروت</h3><p>صور الكروت صور حقيقية من الحرب العالمية الأولى من <b>Wikimedia Commons</b>، وأغلبها ملكية عامة لأنها أقدم من 100 سنة.</p>
-  <div class="credits">${typeof PHOTOS !== 'undefined' ? Object.entries(PHOTOS).map(([id, p]) => `<div><b>${esc(CARDS[id].name)}</b>: ${esc(p.t)} · ${esc(p.a || 'غير معروف')} · ${esc(p.l)}</div>`).join('') : ''}</div>
+  <div class="credits">${typeof PHOTOS !== 'undefined' ? Object.entries(PHOTOS).filter(([id, p]) => !p.r).map(([id, p]) => `<div><b>${esc(CARDS[id].name)}</b>: ${esc(p.t)} · ${esc(p.a || 'غير معروف')} · ${esc(p.l)}</div>`).join('') : ''}</div>
   <h3>ملاحظة تاريخية</h3><p>الـRPG ماكانش موجود في الحرب العالمية الأولى، فبدله فيه الأسلحة الحقيقية اللي استخدموها ضد الدبابات وقتها. والمظلّيين كانوا خطة أمريكية لسنة 1918 الحرب خلصت قبل تنفيذها.</p>
   </div></div>`;
 }
