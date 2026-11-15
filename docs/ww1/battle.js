@@ -2,7 +2,9 @@
 let B = null;
 const SNAP_MS = 100;
 
+let RENDER = GFX;
 function startBattle(o) {
+  RENDER = window.GFX3 && GFX3.supported() ? GFX3 : GFX;
   leaveBattle(true);
   document.querySelectorAll('.modal').forEach(m => m.remove());
   B = { mode: o.mode, sim: o.sim || null, me: o.me, level: o.level ?? 1, camp: o.camp ?? null, sel: null, ghost: null, acc: 0, aiNext: 2, done: false,
@@ -14,7 +16,7 @@ function startBattle(o) {
     <div class="dock"><div class="bhand" id="bhand"></div>
       <div class="supbar"><div class="supfill" id="supfill"></div><div class="supcells">${'<i></i>'.repeat(MAX_SUPPLY)}</div><span id="supnum">⛽ 5</span></div></div>
   </div>`;
-  GFX.init($('#cv'));
+  RENDER.init($('#cv'));
   if (B.sim) setupMap(B.sim.mapId, B.sim.gid);
   $('#bmenu').onclick = battleMenu;
   const em = $('#emote'); if (em) em.onclick = emoteMenu;
@@ -25,14 +27,14 @@ function startBattle(o) {
   else SFX.play('bugle');
 }
 function setupMap(mapId, seed) {
-  GFX.setup(mapId, seed, B.me); onResize();
+  RENDER.setup(mapId, seed, B.me); onResize();
   const m = MAPS[mapId]; $('#mapname').textContent = `🗺️ ${m.name} ${m.year}`; $('#mapname').classList.add('show');
   setTimeout(() => { const e = $('#mapname'); e && e.classList.remove('show'); }, 3500);
   B.mapId = mapId;
 }
-function onResize() { if (B && $('#cv')) GFX.resize(); }
+function onResize() { if (B && $('#cv')) RENDER.resize(); }
 function leaveBattle(keepNet) {
-  if (B) { cancelAnimationFrame(B.raf); B.offInput && B.offInput(); B = null; }
+  if (B) { cancelAnimationFrame(B.raf); B.offInput && B.offInput(); RENDER.dispose && RENDER.dispose(); B = null; }
   window.removeEventListener('resize', onResize);
   if (!keepNet) leaveNet();
 }
@@ -68,14 +70,14 @@ function loop(ts) {
       }
     }
     const map = new Map(); B.sim.ents.forEach(e => map.set(e.id, e));
-    B.sim.fx.forEach(f => { if (f.k === 'play' && f.card === 'x_mine' && f.side !== B.me) return; GFX.fx(f, map); });
+    B.sim.fx.forEach(f => { if (f.k === 'play' && f.card === 'x_mine' && f.side !== B.me) return; RENDER.fx(f, map); });
     if (B.mode === 'host') B.outFx.push(...B.sim.fx.filter(f => f.k !== 'play' || f.card !== 'x_mine' || f.side === 1));
     B.sim.fx.length = 0;
     ents = B.sim.ents; t = B.sim.t;
     if (B.mode === 'host' && ts - B.lastSnap > SNAP_MS) { B.lastSnap = ts; sendSnap(); }
   } else if (B.view) { interp(); ents = B.view.list; t = B.view.t0 + (performance.now() - B.view.recv) / 1000; }
   else { drawWaiting(); return; }
-  GFX.frame({ ents, t, ghost: B.ghost }, dt);
+  RENDER.frame({ ents, t, ghost: B.ghost }, dt);
   if (!B.hudT || ts - B.hudT > 90) { B.hudT = ts; hud(); }
   if (st.winner() != null && !B.done) { B.done = true; setTimeout(finishBattle, 1400); }
 }
@@ -95,8 +97,8 @@ function hud() {
   const hand = st.hand(), key = hand.join() + '|' + B.sel + '|' + st.next();
   if (key !== B.handKey) {
     B.handKey = key;
-    $('#bhand').innerHTML = hand.map((id, i) => { const c = CARDS[id]; return `<div class="hc ${c.kind} r-${c.rarity} ${B.sel === i ? 'sel' : ''}" data-i="${i}"><b class="hcost">${c.cost}</b>${icon(c)}<span>${esc(c.name)}</span></div>`; }).join('')
-      + `<div class="hnext"><small>الجاي</small>${st.next() ? icon(CARDS[st.next()]) : ''}</div>`;
+    $('#bhand').innerHTML = hand.map((id, i) => { const c = CARDS[id]; const ph = photo(id); return `<div class="hc ${c.kind} r-${c.rarity} ${ph ? 'hasph' : ''} ${B.sel === i ? 'sel' : ''}" data-i="${i}" ${ph ? `style="background-image:url('${ph.f}')"` : ''}><b class="hcost">${c.cost}</b>${ph ? '' : icon(c)}<span>${esc(c.name)}</span></div>`; }).join('')
+      + `<div class="hnext ${st.next() && photo(st.next()) ? 'hasph' : ''}" ${st.next() && photo(st.next()) ? `style="background-image:url('${photo(st.next()).f}')"` : ''}><small>الجاي</small>${st.next() && !photo(st.next()) ? icon(CARDS[st.next()]) : ''}</div>`;
   }
   document.querySelectorAll('.hc').forEach(el => { const c = CARDS[hand[+el.dataset.i]]; el.classList.toggle('dim', !c || c.cost > sup); });
   if (B.sel != null && B.ghost) B.ghost.ok = B.ghost.x != null && ghostOk(B.ghost.x, B.ghost.y);
@@ -129,13 +131,13 @@ function bindInput() {
   });
   cv.addEventListener('pointerdown', e => { if (B.sel == null) return; downOnCv = true; moveGhost(e); });
   const over = e => { const r = cv.getBoundingClientRect(); return e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom; };
-  function moveGhost(e) { if (!B || !B.ghost) return; const [x, y] = GFX.toWorld(e.clientX, e.clientY); B.ghost.x = x; B.ghost.y = y; B.ghost.ok = ghostOk(x, y); }
+  function moveGhost(e) { if (!B || !B.ghost) return; const [x, y] = RENDER.toWorld(e.clientX, e.clientY); B.ghost.x = x; B.ghost.y = y; B.ghost.ok = ghostOk(x, y); }
   B.onMove = e => { if (!B || B.sel == null) return; if ((fromCard || downOnCv) && over(e)) moveGhost(e); };
   B.onUp = e => {
     if (!B) return;
     const wasCard = fromCard, wasCv = downOnCv; fromCard = downOnCv = false;
     if (B.sel == null) return;
-    if ((wasCv || wasCard) && over(e)) { const [x, y] = GFX.toWorld(e.clientX, e.clientY); deploy(x, y); }
+    if ((wasCv || wasCard) && over(e)) { const [x, y] = RENDER.toWorld(e.clientX, e.clientY); deploy(x, y); }
   };
   document.addEventListener('pointermove', B.onMove); document.addEventListener('pointerup', B.onUp);
   const off = () => { document.removeEventListener('pointermove', B && B.onMove); document.removeEventListener('pointerup', B && B.onUp); };
@@ -337,7 +339,7 @@ function guestData(d) {
     });
     for (const id of v.ents.keys()) if (!seen.has(id)) v.ents.delete(id);
     v.list = [...v.ents.values()];
-    (d.fx || []).forEach(f => GFX.fx(f, v.ents));
+    (d.fx || []).forEach(f => RENDER.fx(f, v.ents));
     if (B.sel != null && !v.hand[B.sel]) B.sel = null;
   } else if (d.type === 'err') toast(d.msg);
   else if (d.type === 'busy') netStatus('❌ الأوضة دي فيها معركة شغّالة');

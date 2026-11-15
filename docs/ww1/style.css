@@ -162,3 +162,18 @@ input{font:inherit;padding:10px;border-radius:8px;border:2px solid #8a6d2f;backg
 .card .lvl{position:absolute;bottom:3px;left:0;right:0;text-align:center;font-size:9px;font-weight:800;color:#7a5a12}
 .stl{line-height:1.8}
 select{font:inherit;padding:8px;border-radius:8px;border:2px solid #8a6d2f;background:#f2e8cc;width:100%}
+.fbanner{position:absolute;top:40%;left:50%;transform:translateX(-50%);background:#000b;padding:8px 16px;border-radius:12px;font-weight:900;font-size:17px;white-space:nowrap;pointer-events:none;animation:bannr 2.4s both;z-index:5}
+.fbanner.good{color:#f3d98a}.fbanner.bad{color:#ff8a6a}
+.hc img.port,.card img.port{width:100%;height:46px;object-fit:contain;filter:drop-shadow(0 2px 2px #0006)}
+.card .art img.port{height:52px}
+/* صور الكروت الحقيقية */
+.card .art.ph{height:64px;margin:0 -5px;width:calc(100% + 10px);background-size:cover;background-position:center;filter:sepia(.3) contrast(1.08) brightness(.95);box-shadow:inset 0 -10px 12px -6px #0006,inset 0 0 0 1px #0003}
+.hand .card .art.ph,.mcard .card .art.ph{height:60px}
+.hc.hasph{background-size:cover;background-position:center;justify-content:flex-end;padding:0;overflow:hidden;filter:sepia(.25) contrast(1.08)}
+.hc.hasph span{width:100%;background:linear-gradient(transparent,#000d 40%);color:#fff;padding:14px 2px 4px;margin:0;text-shadow:0 1px 2px #000}
+.hc.hasph.dim{filter:grayscale(.9) brightness(.55)}
+.hnext.hasph{background-size:cover;background-position:center;filter:sepia(.3);justify-content:flex-start}
+.hnext.hasph small{background:#000a;width:100%;text-align:center}
+.bigphoto{height:190px;border-radius:10px;background-size:cover;background-position:center;filter:sepia(.25) contrast(1.06);margin-bottom:4px;box-shadow:inset 0 0 0 2px #8a6d2f}
+.credit{font-size:10px;opacity:.65;margin-bottom:6px;direction:ltr;text-align:left}
+.credits{font-size:11px;line-height:1.6;opacity:.8;direction:ltr;text-align:left;max-height:240px;overflow:auto;background:#0003;padding:6px;border-radius:8px}
