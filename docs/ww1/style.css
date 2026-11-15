@@ -112,10 +112,10 @@ input{font:inherit;padding:10px;border-radius:8px;border:2px solid #8a6d2f;backg
 .detail .hint{color:#2f5d2a;font-weight:700;animation:pulse 1s infinite alternate}
 .camplbl{font-size:11px;opacity:.75;font-weight:400}
 .timeline{display:flex;flex-direction:column;gap:8px;position:relative}
-.battle{display:flex;align-items:center;gap:10px;background:#efe4c4;color:#2a2416;border-radius:12px;padding:10px;border:2px solid #8a6d2f;cursor:pointer}
-.battle .yr{font-weight:900;font-size:18px;color:#7a2b2b;min-width:48px;text-align:center}
-.battle .bi{flex:1;display:flex;flex-direction:column;gap:2px}.battle .bi small{opacity:.75;font-size:12px}.battle .bs{font-size:24px}
-.battle.lock{filter:grayscale(1) brightness(.6)}.battle.next{box-shadow:0 0 0 3px #f3cf6a,0 0 14px #f3cf6a88}.battle.done{opacity:.85}
+.cbattle{display:flex;align-items:center;gap:10px;background:#efe4c4;color:#2a2416;border-radius:12px;padding:10px;border:2px solid #8a6d2f;cursor:pointer}
+.cbattle .yr{font-weight:900;font-size:18px;color:#7a2b2b;min-width:48px;text-align:center}
+.cbattle .bi{flex:1;display:flex;flex-direction:column;gap:2px}.cbattle .bi small{opacity:.75;font-size:12px}.cbattle .bs{font-size:24px}
+.cbattle.lock{filter:grayscale(1) brightness(.6)}.cbattle.next{box-shadow:0 0 0 3px #f3cf6a,0 0 14px #f3cf6a88}.cbattle.done{opacity:.85}
 .story{text-align:center}.story .yr{font-size:30px;font-weight:900;color:#7a2b2b}.story p{line-height:1.8}
 .radar{font-size:46px;animation:pulse .8s infinite alternate}
 .emote{position:fixed;left:50%;transform:translateX(-50%);background:#fff;color:#2a2416;padding:8px 14px;border-radius:16px;font-weight:800;z-index:70;box-shadow:0 4px 10px #0008;animation:fadein .2s;max-width:80%;text-align:center}
@@ -125,3 +125,40 @@ input{font:inherit;padding:10px;border-radius:8px;border:2px solid #8a6d2f;backg
 .played small{background:#000a;padding:2px 10px;border-radius:8px;color:#f3d98a;font-weight:700}
 .played .card{transform:scale(1.35);transform-origin:top center;box-shadow:0 10px 30px #000}
 @keyframes playedin{0%{opacity:0;transform:translateX(-50%) scale(.6)}12%{opacity:1;transform:translateX(-50%) scale(1)}85%{opacity:1}100%{opacity:0}}
+/* ===== المعركة الحية ===== */
+.battle{display:flex;flex-direction:column;height:100vh;height:100dvh;background:#14140e;user-select:none;-webkit-user-select:none;touch-action:none}
+.bhud{display:flex;align-items:center;gap:6px;padding:5px 6px;background:linear-gradient(#2a2a1c,#1d1d14);border-bottom:2px solid #5a4a2a;font-size:13px}
+.bhud button{padding:2px 9px}.bname{flex:1;font-weight:800;color:#ffb3a0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crw{font-weight:900;background:#0006;border-radius:8px;padding:2px 7px}.crw.foe{color:#ff8a6a}.crw.me{color:#9ad0ff}
+.btimer{font-weight:900;font-size:16px;color:#f3d98a;background:#0007;border-radius:8px;padding:2px 9px;direction:ltr;min-width:58px;text-align:center}
+.btimer.warn{color:#ff6a4a;animation:pulse .5s infinite alternate}
+.bfield{flex:1;position:relative;min-height:0}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.mapname{position:absolute;top:8px;left:50%;transform:translateX(-50%);background:#000a;color:#f3d98a;padding:4px 12px;border-radius:10px;font-weight:800;opacity:0;transition:opacity .6s;pointer-events:none;white-space:nowrap}
+.mapname.show{opacity:1}
+.dock{background:linear-gradient(#2a2418,#1a160e);border-top:2px solid #5a4a2a;padding:5px 5px calc(5px + env(safe-area-inset-bottom))}
+.bhand{display:flex;gap:5px;align-items:stretch}
+.hc{flex:1;position:relative;background:linear-gradient(#efe2bd,#cbb682);color:#2a2416;border:2px solid #7d6a45;border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 2px 4px;min-height:84px;transition:transform .12s;touch-action:none}
+.hc.tactic{background:linear-gradient(#e2d6bb,#b9a985);border-style:double;border-width:3px}
+.hc.r-rare{border-color:#2f5d9a}.hc.r-epic{border-color:#7b3fa0}.hc.r-legendary{border-color:#d1a02b}
+.hc .ic{width:38px;height:38px}.hc .ic.emo{font-size:28px}
+.hc span{font-size:9.5px;font-weight:800;text-align:center;line-height:1.15;margin-top:2px}
+.hc .hcost{position:absolute;top:-6px;right:-5px;width:22px;height:22px;border-radius:50%;background:#2f5d9a;color:#fff;display:flex;align-items:center;justify-content:center;border:2px solid #fff;font-size:12px}
+.hc.dim{filter:grayscale(.7) brightness(.65)}
+.hc.sel{transform:translateY(-10px) scale(1.05);box-shadow:0 0 0 3px #f3cf6a,0 6px 14px #000}
+.hnext{width:46px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0005;border-radius:8px;opacity:.85}
+.hnext small{font-size:9px}.hnext .ic{width:28px;height:28px}.hnext .ic.emo{font-size:20px}
+.supbar{position:relative;height:20px;margin-top:6px;background:#0008;border-radius:10px;overflow:hidden;border:1px solid #6a8ac0}
+.supfill{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,#3a78d0,#6ab0ff);transition:width .1s linear;right:auto}
+[dir=rtl] .supfill{inset:0 0 0 auto}
+.supbar.fast .supfill{background:linear-gradient(90deg,#d08a2a,#ffd06a)}
+.supcells{position:absolute;inset:0;display:flex}.supcells i{flex:1;border-left:1px solid #0006}
+.supbar span{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;text-shadow:0 1px 2px #000}
+.crline{font-size:22px;font-weight:900}
+.indeck{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin:8px 0}
+.chip{display:flex;align-items:center;gap:2px;background:#efe4c4;color:#2a2416;border-radius:8px;padding:2px 6px;border:2px solid #8a6d2f;cursor:pointer}
+.chip .ic{width:22px;height:22px}.chip .ic.emo{font-size:16px}.chip b{font-size:12px;color:#2f5d9a}
+.cell.picked .card{box-shadow:0 0 0 3px #7fdc6a,0 3px 6px #0008}
+.card .lvl{position:absolute;bottom:3px;left:0;right:0;text-align:center;font-size:9px;font-weight:800;color:#7a5a12}
+.stl{line-height:1.8}
+select{font:inherit;padding:8px;border-radius:8px;border:2px solid #8a6d2f;background:#f2e8cc;width:100%}
