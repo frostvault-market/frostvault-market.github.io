@@ -1,6 +1,6 @@
 // ===== الرسم: أرض واقعية مرسومة بالكود + جنود ودبابات ومدافع + انفجارات ودخان =====
 const GFX = (() => {
-  let hg = null, props = null, skipProps = false;
+  let hg = null, props = null, skipProps = false, featOnly = false;
   let cv, ctx, terr, S = 2, scale = 1, ox = 0, oy = 0, flip = false, me = 0, shake = 0, map = null;
   const parts = [], flashes = [], tracers = [], planes = [], banners = [];
   const COL = {
@@ -77,12 +77,12 @@ const GFX = (() => {
     rs = seed | 0;
     const c = mk(WW * S, WH * S), g = c.getContext('2d'); g.scale(S, S);
     const grd = g.createLinearGradient(0, 0, WW, WH); grd.addColorStop(0, m.base[1]); grd.addColorStop(0.5, m.base[0]); grd.addColorStop(1, m.base[1]);
-    g.fillStyle = grd; g.fillRect(0, 0, WW, WH);
+    if (!featOnly) { g.fillStyle = grd; g.fillRect(0, 0, WW, WH); }
     // تبقيع الأرض
-    for (let i = 0; i < 1100; i++) { const dark = R() < 0.55; blob(g, R() * WW, R() * WH, 5 + R() * 28, dark ? 'rgb(30,24,14)' : 'rgb(170,155,115)', 0.04 + R() * 0.07); }
+    if (!featOnly) for (let i = 0; i < 1100; i++) { const dark = R() < 0.55; blob(g, R() * WW, R() * WH, 5 + R() * 28, dark ? 'rgb(30,24,14)' : 'rgb(170,155,115)', 0.04 + R() * 0.07); }
     // حبيبات
-    for (let i = 0; i < 9000; i++) { g.fillStyle = R() < 0.5 ? 'rgba(0,0,0,0.08)' : 'rgba(255,240,200,0.06)'; g.fillRect(R() * WW, R() * WH, 0.6, 0.6); }
-    if (m.sand) for (let i = 0; i < 90; i++) { g.strokeStyle = 'rgba(255,245,210,0.18)'; g.lineWidth = 0.6; const x = R() * WW, y = R() * WH; g.beginPath(); g.arc(x, y, 10 + R() * 30, 0.3, 1.2); g.stroke(); }
+    if (!featOnly) for (let i = 0; i < 9000; i++) { g.fillStyle = R() < 0.5 ? 'rgba(0,0,0,0.08)' : 'rgba(255,240,200,0.06)'; g.fillRect(R() * WW, R() * WH, 0.6, 0.6); }
+    if (m.sand && !featOnly) for (let i = 0; i < 90; i++) { g.strokeStyle = 'rgba(255,245,210,0.18)'; g.lineWidth = 0.6; const x = R() * WW, y = R() * WH; g.beginPath(); g.arc(x, y, 10 + R() * 30, 0.3, 1.2); g.stroke(); }
     if (m.chalk) for (let i = 0; i < 160; i++) blob(g, R() * WW, R() * WH, 4 + R() * 12, 'rgb(225,220,200)', 0.18);
     if (m.ridges) for (let i = 0; i < 5; i++) { const y = 60 + i * 130 + R() * 30; g.strokeStyle = 'rgba(90,70,40,0.18)'; g.lineWidth = 8; g.beginPath(); for (let x = 0; x <= WW; x += 10) { const yy = y + Math.sin(x * 0.03 + i) * 14; x ? g.lineTo(x, yy) : g.moveTo(x, yy); } g.stroke(); }
     // حقول
@@ -96,7 +96,7 @@ const GFX = (() => {
     }
     // عشب
     const gr = m.grass || 0;
-    for (let i = 0; i < 2600 * gr; i++) { const x = R() * WW, y = R() * WH; g.strokeStyle = `rgba(${80 + R() * 50 | 0},${105 + R() * 50 | 0},${40 + R() * 25 | 0},0.5)`; g.lineWidth = 0.5; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (R() - 0.5) * 2, y - 1.5 - R() * 2); g.stroke(); }
+    if (!featOnly) for (let i = 0; i < 2600 * gr; i++) { const x = R() * WW, y = R() * WH; g.strokeStyle = `rgba(${80 + R() * 50 | 0},${105 + R() * 50 | 0},${40 + R() * 25 | 0},0.5)`; g.lineWidth = 0.5; g.beginPath(); g.moveTo(x, y); g.lineTo(x + (R() - 0.5) * 2, y - 1.5 - R() * 2); g.stroke(); }
     // طرق
     for (let i = 0; i < (m.roads || 0); i++) {
       const x0 = 40 + R() * 280, x1 = 40 + R() * 280;
@@ -151,7 +151,8 @@ const GFX = (() => {
     for (let i = 0; i < (m.treesN || 0); i++) { const x = R() * WW, y = 20 + R() * 600; if (Math.abs(y - 320) < 22 && (m.rivers || []).length) continue; if (Math.abs(x - 90) < 26 || Math.abs(x - 270) < 26) continue; tree(g, x, y, m.trees); }
     // أماكن التحصينات (أرضية خرسانية)
     [[90, 505], [270, 505], [180, 588], [90, 135], [270, 135], [180, 52]].forEach(([x, y]) => { blob(g, x, y, 34, 'rgb(40,32,22)', 0.35); });
-    if (m.tint) { g.fillStyle = m.tint; g.fillRect(0, 0, WW, WH); }
+    if (m.tint && !featOnly) { g.fillStyle = m.tint; g.fillRect(0, 0, WW, WH); }
+    if (featOnly) return c;
     const v = g.createRadialGradient(WW / 2, WH / 2, WH * 0.3, WW / 2, WH / 2, WH * 0.75); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.35)');
     g.fillStyle = v; g.fillRect(0, 0, WW, WH);
     return c;
@@ -521,12 +522,12 @@ const GFX = (() => {
     },
     fx: onFx, frame, banner(t, good) { banners.push({ t, life: 0, good }); },
     // للرسم الـ3D: الأرض كصورة + خريطة ارتفاعات + أماكن الشجر والأطلال
-    terrainFor(mapId, seed, scale) {
-      const oldS = S; S = scale; props = []; skipProps = true;
+    terrainFor(mapId, seed, scale, features) {
+      const oldS = S; S = scale; props = []; skipProps = true; featOnly = !!features;
       const hc = mk(WW, WH); hg = hc.getContext('2d'); hg.fillStyle = 'rgb(128,128,128)'; hg.fillRect(0, 0, WW, WH);
       const c = buildTerrain(MAPS[mapId], seed);
       const out = { color: c, height: hc, props };
-      hg = null; skipProps = false; S = oldS; return out;
+      hg = null; skipProps = false; featOnly = false; S = oldS; return out;
     },
     blob, scorchOn(c, scale, x, y, r) { const g = c.getContext('2d'); g.save(); g.setTransform(scale, 0, 0, scale, 0, 0); blob(g, x, y, r * 1.3, 'rgb(20,15,10)', 0.5); g.restore(); },
   };

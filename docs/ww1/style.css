@@ -178,3 +178,4 @@ select{font:inherit;padding:8px;border-radius:8px;border:2px solid #8a6d2f;backg
 .credit{font-size:10px;opacity:.65;margin-bottom:6px;direction:ltr;text-align:left}
 .credits{font-size:11px;line-height:1.6;opacity:.8;direction:ltr;text-align:left;max-height:240px;overflow:auto;background:#0003;padding:6px;border-radius:8px}
 .gfxbtn{display:block;margin:6px auto 0;background:#0004;color:#efe4c4;border-color:#5a4a2a;font-size:13px}
+.loading{position:absolute;inset:0;display:none;align-items:center;justify-content:center;background:#1a1a12;color:#f3d98a;font-weight:800;font-size:18px}

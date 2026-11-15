@@ -1,0 +1,27 @@
+Textures, models and HDRI from Poly Haven (https://polyhaven.com), CC0 public domain:
+aerial_grass_rock
+aerial_mud_1
+aerial_ground_rock
+aerial_beach_01
+dirt_aerial_02
+burned_ground_01
+farm_soil
+gravel_road
+forest_leaves_02
+clay_roof_tiles
+roof_slates_02
+plastered_stone_wall
+rustic_stone_wall
+weathered_planks
+concrete_wall_008
+green_metal_rust
+rough_wood
+dry_ground_01
+shrub_03
+rock_07
+wooden_military_crate
+ammo_box
+barrel_03
+old_tyre
+tree_stump_01
+kloofendal_48d_partly_cloudy_puresky
