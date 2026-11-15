@@ -120,6 +120,13 @@ const PHOTOS = {
 "l": "Public domain",
 "p": "https://commons.wikimedia.org/wiki/File:French_soldier_with_a_flamethrower_(c._1916).png"
 },
+"cav": {
+"f": "img/cards/cav.jpg",
+"t": "4th Light Horse Brigade Beersheba",
+"a": "",
+"l": "Public domain",
+"p": "https://commons.wikimedia.org/wiki/File:4th_Light_Horse_Brigade_Beersheba.jpg"
+},
 "dough": {
 "f": "img/cards/dough.jpg",
 "t": "American Infantry Chauchat",
