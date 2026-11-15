@@ -1,5 +1,6 @@
 // ===== الرسم: أرض واقعية مرسومة بالكود + جنود ودبابات ومدافع + انفجارات ودخان =====
 const GFX = (() => {
+  let hg = null, props = null, skipProps = false;
   let cv, ctx, terr, S = 2, scale = 1, ox = 0, oy = 0, flip = false, me = 0, shake = 0, map = null;
   const parts = [], flashes = [], tracers = [], planes = [], banners = [];
   const COL = {
@@ -13,6 +14,7 @@ const GFX = (() => {
   // ---------------- الأرض ----------------
   function blob(g, x, y, r, col, a) { const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, col.replace(')', `,${a})`).replace('rgb', 'rgba')); gr.addColorStop(1, col.replace(')', ',0)').replace('rgb', 'rgba')); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
   function crater(g, x, y, r, water) {
+    if (hg) { const h = hg.createRadialGradient(x, y, 0, x, y, r * 1.3); h.addColorStop(0, water ? 'rgb(70,70,70)' : 'rgb(60,60,60)'); h.addColorStop(0.75, 'rgba(128,128,128,0.6)'); h.addColorStop(0.9, 'rgba(150,150,150,0.5)'); h.addColorStop(1, 'rgba(128,128,128,0)'); hg.fillStyle = h; hg.beginPath(); hg.arc(x, y, r * 1.3, 0, 7); hg.fill(); }
     blob(g, x + r * 0.15, y + r * 0.15, r * 1.6, 'rgb(40,30,20)', 0.35);
     const rim = g.createRadialGradient(x, y, r * 0.55, x, y, r * 1.25);
     rim.addColorStop(0, 'rgba(0,0,0,0)'); rim.addColorStop(0.6, 'rgba(150,130,95,0.45)'); rim.addColorStop(1, 'rgba(150,130,95,0)');
@@ -30,6 +32,7 @@ const GFX = (() => {
     g.strokeStyle = 'rgba(200,185,150,0.25)'; g.lineWidth = 1; g.beginPath(); g.arc(x, y, r * 0.95, 3.4, 5.2); g.stroke();
   }
   function tree(g, x, y, kind) {
+    if (skipProps) { props.push({ t: 'tree', x, y, kind, s: R() }); return; }
     if (kind === 'dead') {
       g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 2.2; g.beginPath(); g.moveTo(x + 2, y + 2); const a = R() * 6.28, l = 6 + R() * 10; g.lineTo(x + 2 + Math.cos(a) * l, y + 2 + Math.sin(a) * l); g.stroke();
       g.strokeStyle = '#3a2e22'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
@@ -47,6 +50,7 @@ const GFX = (() => {
     }
   }
   function sandbagLine(g, pts, w) {
+    if (hg) { hg.lineCap = 'round'; hg.lineJoin = 'round'; hg.strokeStyle = 'rgb(165,165,165)'; hg.lineWidth = w + 4; path(hg, pts); hg.stroke(); hg.strokeStyle = 'rgb(70,70,70)'; hg.lineWidth = w; path(hg, pts); hg.stroke(); }
     g.lineCap = 'round'; g.lineJoin = 'round';
     g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = w + 5; path(g, pts, 1.5); g.stroke();
     g.strokeStyle = '#8f8160'; g.lineWidth = w + 3; path(g, pts); g.stroke();
@@ -120,6 +124,7 @@ const GFX = (() => {
     (m.rivers || []).forEach(rv => {
       const top = rv.y - rv.h / 2, bot = rv.y + rv.h / 2;
       g.fillStyle = 'rgba(40,30,18,0.5)'; g.fillRect(0, top - 3, WW, rv.h + 6);
+      if (hg) { hg.fillStyle = 'rgb(40,40,40)'; hg.fillRect(0, top, WW, rv.h); }
       const w = g.createLinearGradient(0, top, 0, bot); w.addColorStop(0, '#2f4a4c'); w.addColorStop(0.5, '#41605f'); w.addColorStop(1, '#2b4446');
       g.fillStyle = w; g.fillRect(0, top, WW, rv.h);
       for (let i = 0; i < 70; i++) { g.strokeStyle = 'rgba(200,225,220,0.18)'; g.lineWidth = 0.6; const x = R() * WW, y = top + 2 + R() * (rv.h - 4); g.beginPath(); g.moveTo(x, y); g.lineTo(x + 4 + R() * 8, y); g.stroke(); }
@@ -135,6 +140,7 @@ const GFX = (() => {
     // أطلال
     for (let i = 0; i < (m.ruins || 0); i++) {
       const x = 20 + R() * 320, y = 40 + R() * 560; if (Math.abs(y - 320) < 30) continue;
+      if (skipProps) { props.push({ t: 'ruin', x, y, s: R() }); continue; }
       g.save(); g.translate(x, y); g.rotate(R() * 3);
       for (let k = 0; k < 4; k++) { const w = 4 + R() * 14, h = 2 + R() * 2.5; const xx = (R() - 0.5) * 14, yy = (R() - 0.5) * 14;
         g.fillStyle = 'rgba(0,0,0,0.35)'; g.fillRect(xx + 1.5, yy + 1.5, w, h); g.fillStyle = R() < 0.5 ? '#9c8f7a' : '#8a7c66'; g.fillRect(xx, yy, w, h); g.fillStyle = 'rgba(255,255,255,0.15)'; g.fillRect(xx, yy, w, 0.6); }
@@ -514,5 +520,14 @@ const GFX = (() => {
       return [x, y];
     },
     fx: onFx, frame, banner(t, good) { banners.push({ t, life: 0, good }); },
+    // للرسم الـ3D: الأرض كصورة + خريطة ارتفاعات + أماكن الشجر والأطلال
+    terrainFor(mapId, seed, scale) {
+      const oldS = S; S = scale; props = []; skipProps = true;
+      const hc = mk(WW, WH); hg = hc.getContext('2d'); hg.fillStyle = 'rgb(128,128,128)'; hg.fillRect(0, 0, WW, WH);
+      const c = buildTerrain(MAPS[mapId], seed);
+      const out = { color: c, height: hc, props };
+      hg = null; skipProps = false; S = oldS; return out;
+    },
+    blob, scorchOn(c, scale, x, y, r) { const g = c.getContext('2d'); g.save(); g.setTransform(scale, 0, 0, scale, 0, 0); blob(g, x, y, r * 1.3, 'rgb(20,15,10)', 0.5); g.restore(); },
   };
 })();
