@@ -120,6 +120,13 @@ const PHOTOS = {
 "l": "Public domain",
 "p": "https://commons.wikimedia.org/wiki/File:French_soldier_with_a_flamethrower_(c._1916).png"
 },
+"cav": {
+"f": "img/cards/cav.jpg",
+"t": "4th Light Horse Brigade Beersheba",
+"a": "",
+"l": "Public domain",
+"p": "https://commons.wikimedia.org/wiki/File:4th_Light_Horse_Brigade_Beersheba.jpg"
+},
 "dough": {
 "f": "img/cards/dough.jpg",
 "t": "American Infantry Chauchat",
@@ -218,6 +225,13 @@ const PHOTOS = {
 "l": "CC BY 4.0",
 "p": "https://commons.wikimedia.org/wiki/File:World_War_I;_motorized_field_hospital_Wellcome_L0008998.jpg"
 },
+"stokes": {
+"f": "img/cards/stokes.jpg",
+"t": "Australians Loading 9.45 inch Trench Mortar Somme 2 August 1916",
+"a": "John Warwick Brooke",
+"l": "Public domain",
+"p": "https://commons.wikimedia.org/wiki/File:Australians_Loading_9.45_inch_Trench_Mortar_Somme_2_August_1916.jpg"
+},
 "fk77": {
 "f": "img/cards/fk77.jpg",
 "t": "German 77mm field gun at the AWM Aug 2012",
@@ -238,5 +252,12 @@ const PHOTOS = {
 "a": "",
 "l": "Public domain",
 "p": "https://commons.wikimedia.org/wiki/File:Dicke_Bertha.Big_Bertha.jpg"
+},
+"rifle": {
+"f": "img/cards/rifle.jpg",
+"t": "The Battle of the Somme, July-november 1916 Q4587",
+"a": "John Warwick Brooke",
+"l": "Public domain",
+"p": "https://commons.wikimedia.org/wiki/File:The_Battle_of_the_Somme,_July-november_1916_Q4587.jpg"
 }
 };
