@@ -1,0 +1,10 @@
+{
+  "name": "سكة النجاة",
+  "short_name": "سكة النجاة",
+  "start_url": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#140c10",
+  "theme_color": "#140c10",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
