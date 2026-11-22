@@ -9,7 +9,7 @@ const App = {
     this.renderer = new Renderer(document.getElementById('cv'));
     this.ui = document.getElementById('ui');
     window.addEventListener('resize', () => { this.renderer.resize(); });
-    document.addEventListener('visibilitychange', () => { if (document.hidden && this.screen === 'run' && this.game && !this.game.over) this.pause(); });
+    document.addEventListener('visibilitychange', () => { if (document.hidden && this.game && !this.game.over) { if (this.screen === 'run') this.pause(); else if (this.screen === 'foot') this.pauseFoot(); } });
     this.bindKeys();
     this.startDemo();
     this.showMenu();
@@ -18,8 +18,9 @@ const App = {
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
       if (this.game) {
         this.game.update(dt);
-        this.renderer.render(this.game);
+        if (this.game.isPlat) this.game.render(this.renderer); else this.renderer.render(this.game);
         if (this.screen === 'run') this.updateHUD();
+        if (this.screen === 'foot') this.updateFootHUD();
         if (this.screen === 'run' && this.game.car && !this.game.over) {
           const c = this.game.car;
           SFX.updateEngine(clamp(Math.abs(c.wheelSpin) / 40, 0, 1.4), this.game.input.gas ? 1 : 0, c.boosting);
@@ -40,6 +41,11 @@ const App = {
     if (!s) s = {};
     s.scrap ??= 0; s.owned ??= ['sedan']; s.sel ??= 'sedan'; s.levels ??= {}; s.unlocked ??= 1; s.best ??= {}; s.muted ??= false; s.runs ??= 0; s.wins ??= {};
     for (const v of VEHICLES) { s.levels[v.id] ??= {}; for (const u of UPGRADES) s.levels[v.id][u.id] ??= 0; }
+    s.inv ??= null; s.eq ??= {}; s.bUnlocked ??= 1; s.bBest ??= {}; s.bWins ??= {};
+    if (!s.inv) { // starter kit
+      const gun = makeItem('weapon', 0, 1, 'pistol'), boots = makeItem('boots', 0, 1);
+      s.inv = [gun, boots]; s.eq = { weapon: gun.uid, boots: boots.uid };
+    }
     this.save = s;
     this.vIdx = Math.max(0, VEHICLES.findIndex(v => v.id === s.sel));
     SFX.setMuted(s.muted);
@@ -166,7 +172,7 @@ const App = {
       const l = lv[u.id], maxed = l >= 5, cost = u.costs[l];
       const pips = Array.from({ length: 5 }, (_, k) => `<i class="${k < l ? 'on' : ''}"></i>`).join('');
       return `<button class="up ${!owned || maxed || this.save.scrap < cost ? 'dis' : ''}" data-u="${u.id}">
-        <div class="up-ic">${icon(u.icon, 26)}</div>
+        ${badge(u.icon, 'gold', 46, 'up-ic')}
         <div class="up-txt"><b>${u.name}</b><small>${u.desc}</small><div class="pips">${pips}</div></div>
         <div class="up-cost">${maxed ? 'على الآخر' : `${icon('scrap', 14)} ${fmt(cost)}`}</div>
       </button>`;
@@ -342,7 +348,7 @@ const App = {
       <div class="card-row">${choices.map((c, i) => `
         <button class="pcard r${c.r}" data-i="${i}" style="animation-delay:${i * 0.08}s">
           <div class="rar">${rar[c.r]}</div>
-          <div class="pc-ic">${icon(c.icon, 46)}</div>
+          ${badge(c.icon, ['steel', 'blue', 'purple'][c.r], 84, 'pc-ic')}
           <b>${c.name}</b><p>${c.desc}</p>
           ${(this.game.cards[c.id] || 0) ? `<div class="have">عندك ${arNum(this.game.cards[c.id])}</div>` : ''}
         </button>`).join('')}
@@ -419,8 +425,15 @@ const App = {
   // ===== keyboard =====
   bindKeys() {
     const map = { ArrowRight: 'gas', KeyD: 'gas', ArrowLeft: 'brake', KeyA: 'brake', ArrowUp: 'tiltB', KeyW: 'tiltB', ArrowDown: 'tiltF', KeyS: 'tiltF', Space: 'boost', ShiftLeft: 'boost', ShiftRight: 'boost' };
+    const fmap = { ArrowRight: 'right', KeyD: 'right', ArrowLeft: 'left', KeyA: 'left', ArrowUp: 'jump', KeyW: 'jump', Space: 'jump', ArrowDown: 'down', KeyS: 'down', ShiftLeft: 'dash', ShiftRight: 'dash', KeyK: 'dash', KeyJ: 'jump' };
     const h = (down) => (e) => {
       if (e.code === 'Escape' && down && this.screen === 'run') { this.pause(); return; }
+      if (e.code === 'Escape' && down && this.screen === 'foot') { this.pauseFoot(); return; }
+      if (this.screen === 'foot' && this.game && this.game.isPlat) {
+        const fk = fmap[e.code]; if (!fk) return; e.preventDefault();
+        if (e.repeat) return;
+        this.game.input[fk] = down; return;
+      }
       const k = map[e.code];
       if (!k || this.screen !== 'run' || !this.game) return;
       e.preventDefault();
