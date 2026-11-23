@@ -233,7 +233,8 @@ const PART = {
 
   poster(g, p, B, r) {
     g.save(); g.translate(p.x, p.y); g.rotate(r.range(-0.06, 0.06));
-    const w = 150, h = 58;
+    g.font = '900 20px Cairo, sans-serif';
+    const w = Math.max(130, g.measureText(p.text).width + 40), h = 58;
     const col = r.pick(['#e8dcc0', '#d0e4e0', '#f0d0d8', '#e8e0a0', '#c8342a']);
     g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(-w / 2 + 4, -h / 2 + 5, w, h);
     g.fillStyle = col; g.fillRect(-w / 2, -h / 2, w, h);
@@ -349,61 +350,97 @@ const PART = {
     const run = p.onGround && Math.abs(p.vx) > 30;
     const ph = p.anim;
     g.save();
-    if (p.hurtT > 0 && Math.floor(t * 20) % 2) g.globalAlpha = 0.45;
+    if (p.hurtT > 0 && Math.floor(t * 20) % 2) g.globalAlpha = 0.5;
+    if (p.deadT) { g.rotate(-Math.min(1, p.deadT * 3) * 1.45 * f); g.translate(0, Math.min(1, p.deadT * 3) * 6); }
     g.scale(f, 1);
-    if (p.dashT > 0) g.rotate(0.18);
-    const legSw = run ? Math.sin(ph) * 0.75 : p.onGround ? 0 : 0.5;
-    const bootCol = RARITY[eq.boots ?? 0].color;
-    const pants = '#2e3440';
+    if (p.dashT > 0) g.rotate(0.22);
+    const bob = run ? Math.abs(Math.sin(ph)) * 2.5 : Math.sin(t * 2.2) * 0.8;
+    const legSw = run ? Math.sin(ph) * 0.8 : p.onGround ? 0 : 0.55;
+    const bootCol = eq.boots != null ? shade(RARITY[eq.boots].color, -0.5) : '#2a1e16';
+    const pants = '#2c3340', pantsD = '#1c212a';
+    const jacket = '#3c4a36';
     const leg = (a, front) => {
-      g.save(); g.translate(0, -36); g.rotate(a);
-      g.strokeStyle = front ? pants : shade(pants, -0.3); g.lineWidth = 10; g.lineCap = 'round';
+      g.save(); g.translate(front ? 2 : -2, -36); g.rotate(a);
+      g.lineCap = 'round';
+      g.strokeStyle = front ? pants : pantsD; g.lineWidth = 10.5;
       g.beginPath(); g.moveTo(0, 0); g.lineTo(0, 17); g.stroke();
-      g.translate(0, 17); g.rotate(Math.max(0, -a) * 1.2 + (p.onGround ? 0 : 0.6));
-      g.beginPath(); g.moveTo(0, 0); g.lineTo(0, 15); g.stroke();
-      g.fillStyle = eq.boots != null ? shade(bootCol, -0.45) : '#2a1e16';
-      g.beginPath(); g.roundRect(-5, 12, 15, 8, 3); g.fill();
+      g.fillStyle = front ? '#3e4654' : '#272d38'; g.beginPath(); g.ellipse(1, 16, 5.5, 4, 0, 0, TAU); g.fill(); // knee pad
+      g.translate(0, 17); g.rotate(Math.max(0, -a) * 1.3 + (p.onGround ? 0 : 0.7));
+      g.strokeStyle = front ? pants : pantsD; g.lineWidth = 9.5;
+      g.beginPath(); g.moveTo(0, 0); g.lineTo(0, 14); g.stroke();
+      const bg = g.createLinearGradient(0, 12, 0, 21); bg.addColorStop(0, shade(bootCol, 0.25)); bg.addColorStop(1, shade(bootCol, -0.3));
+      g.fillStyle = bg; g.beginPath(); g.roundRect(-5.5, 11, 16, 10, [3, 5, 2, 2]); g.fill();
+      g.fillStyle = '#111'; g.fillRect(-5.5, 19, 16, 2);
       g.restore();
     };
+    g.translate(0, -bob * 0.4);
     leg(-legSw, false);
-    // backpack
-    g.fillStyle = '#4a3a22'; g.beginPath(); g.roundRect(-20, -66, 12, 26, 4); g.fill();
-    g.fillStyle = '#3a2a16'; g.fillRect(-20, -52, 12, 3);
-    // torso / jacket
-    const vestCol = eq.vest != null ? RARITY[eq.vest].color : '#6a5a40';
-    const jg = g.createLinearGradient(-12, 0, 12, 0);
-    jg.addColorStop(0, shade('#3e4a3a', 0.1)); jg.addColorStop(1, shade('#3e4a3a', -0.35));
-    g.fillStyle = jg; g.beginPath(); g.roundRect(-12, -70, 24, 38, 7); g.fill();
-    if (eq.vest != null) { // armor vest
-      const vg = g.createLinearGradient(-12, 0, 12, 0);
-      vg.addColorStop(0, shade(vestCol, -0.2)); vg.addColorStop(1, shade(vestCol, -0.6));
-      g.fillStyle = vg; g.beginPath(); g.roundRect(-11, -66, 22, 26, 5); g.fill();
-      g.fillStyle = 'rgba(0,0,0,.3)'; g.fillRect(-9, -56, 18, 2); g.fillRect(-9, -48, 18, 2);
+    // back arm (support hand towards weapon)
+    // backpack with bedroll
+    g.save(); g.translate(-15, -62);
+    const pk = g.createLinearGradient(-8, 0, 8, 0); pk.addColorStop(0, '#5a4628'); pk.addColorStop(1, '#3a2c18');
+    g.fillStyle = pk; g.beginPath(); g.roundRect(-8, 0, 14, 28, 5); g.fill();
+    g.fillStyle = '#2c2214'; g.fillRect(-8, 12, 14, 3);
+    g.fillStyle = '#6a2a1e'; g.beginPath(); g.roundRect(-9, -7, 16, 8, 4); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(-5, -7); g.lineTo(-5, 1); g.moveTo(3, -7); g.lineTo(3, 1); g.stroke();
+    g.restore();
+    // torso: jacket
+    const jg = g.createLinearGradient(-12, 0, 13, 0);
+    jg.addColorStop(0, shade(jacket, 0.18)); jg.addColorStop(0.6, jacket); jg.addColorStop(1, shade(jacket, -0.4));
+    g.fillStyle = jg; g.beginPath(); g.roundRect(-12, -71, 25, 39, [8, 8, 4, 4]); g.fill();
+    g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1; g.beginPath(); g.moveTo(4, -68); g.lineTo(4, -34); g.stroke(); // zipper
+    g.fillStyle = 'rgba(0,0,0,.25)'; g.fillRect(-9, -46, 9, 7); // pocket
+    if (eq.vest != null) {
+      const vc = RARITY[eq.vest].color;
+      const vg = g.createLinearGradient(-11, 0, 12, 0); vg.addColorStop(0, shade(vc, -0.15)); vg.addColorStop(1, shade(vc, -0.62));
+      g.fillStyle = vg; g.beginPath(); g.roundRect(-11, -66, 23, 27, 5); g.fill();
+      g.fillStyle = 'rgba(0,0,0,.3)'; for (let k = 0; k < 3; k++) g.fillRect(-8 + k * 7, -50, 5, 8); // mag pouches
+      g.fillStyle = 'rgba(255,255,255,.15)'; g.fillRect(-11, -66, 23, 2);
     }
-    g.fillStyle = '#222'; g.fillRect(-12, -38, 24, 4); // belt
+    // straps
+    g.strokeStyle = '#2a2014'; g.lineWidth = 3; g.beginPath(); g.moveTo(-8, -70); g.lineTo(-6, -40); g.stroke();
+    // belt + pouches
+    g.fillStyle = '#1e1a14'; g.fillRect(-12, -38, 25, 5);
+    g.fillStyle = '#c8a24a'; g.fillRect(2, -37.5, 4, 4);
+    g.fillStyle = '#3a3020'; g.beginPath(); g.roundRect(-11, -37, 7, 9, 2); g.fill();
     leg(legSw, true);
+    // scarf
+    const flutter = run ? Math.sin(t * 18) * 3 : Math.sin(t * 3);
+    g.fillStyle = '#9a2a1e';
+    g.beginPath(); g.roundRect(-8, -75, 17, 7, 3); g.fill();
+    g.beginPath(); g.moveTo(-7, -73); g.quadraticCurveTo(-18, -70 + flutter, -24 - Math.abs(p.vx) * 0.02, -64 + flutter); g.lineTo(-20, -62 + flutter); g.quadraticCurveTo(-14, -66, -6, -69); g.fill();
     // head
-    g.save(); g.translate(2, -80);
-    g.fillStyle = '#c8956a'; g.beginPath(); g.ellipse(0, 0, 9, 10, 0, 0, TAU); g.fill();
-    g.fillStyle = '#1a1210'; g.fillRect(4, -2, 3, 3);
-    g.fillStyle = '#2a1a10'; g.fillRect(-2, 6, 10, 2); // stubble
+    g.save(); g.translate(2, -82);
+    const sk = g.createRadialGradient(2, -3, 1, 0, 0, 12); sk.addColorStop(0, '#e0aa7c'); sk.addColorStop(1, '#a8744c');
+    g.fillStyle = sk; g.beginPath(); g.ellipse(0, 0, 9.5, 10.5, 0, 0, TAU); g.fill();
+    g.fillStyle = '#9a6a44'; g.beginPath(); g.ellipse(-3, 1, 2.5, 3.5, 0, 0, TAU); g.fill(); // ear
+    g.fillStyle = 'rgba(40,24,14,.55)'; g.beginPath(); g.moveTo(-6, 4); g.quadraticCurveTo(2, 12, 9.5, 4); g.lineTo(9, 1); g.quadraticCurveTo(3, 7, -5, 2); g.fill(); // beard
+    g.fillStyle = '#fff'; g.beginPath(); g.ellipse(5.2, -1.5, 2.2, 1.6, 0, 0, TAU); g.fill();
+    g.fillStyle = '#1a1210'; g.beginPath(); g.arc(6, -1.5, 1.1, 0, TAU); g.fill();
+    g.strokeStyle = '#2a1a10'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(3, -4.5); g.lineTo(8, -4); g.stroke(); // brow
+    g.fillStyle = '#b07a50'; g.beginPath(); g.moveTo(9, -1); g.lineTo(11, 2.5); g.lineTo(8.5, 3); g.fill(); // nose
     if (eq.helmet != null) {
       const hc = RARITY[eq.helmet].color;
-      const hg = g.createLinearGradient(0, -14, 0, 0); hg.addColorStop(0, shade(hc, -0.1)); hg.addColorStop(1, shade(hc, -0.55));
-      g.fillStyle = hg; g.beginPath(); g.ellipse(-1, -3, 12, 9, 0, Math.PI, 0); g.fill(); g.fillRect(-14, -4, 27, 3);
-    } else { g.fillStyle = '#7a2a1a'; g.beginPath(); g.ellipse(-1, -4, 10, 7, 0, Math.PI, 0); g.fill(); g.fillRect(0, -6, 13, 3); }
+      const hg = g.createLinearGradient(0, -14, 0, 0); hg.addColorStop(0, shade(hc, 0.05)); hg.addColorStop(1, shade(hc, -0.6));
+      g.fillStyle = hg; g.beginPath(); g.ellipse(-0.5, -3, 12.5, 10, 0, Math.PI, 0); g.fill(); g.fillRect(-14, -4, 28, 3.2);
+      g.fillStyle = 'rgba(255,255,255,.25)'; g.beginPath(); g.ellipse(-3, -9, 5, 2, -0.3, 0, TAU); g.fill();
+      g.fillStyle = '#1a1a1a'; g.fillRect(-1, -1, 8, 1.2); // chin strap hint
+    } else {
+      g.fillStyle = '#2a1a10'; g.beginPath(); g.ellipse(-2, -6, 9, 5, -0.2, Math.PI, TAU); g.fill(); // hair
+      g.fillStyle = '#7a2a1a'; g.beginPath(); g.ellipse(-1, -4.5, 10, 7, 0, Math.PI, 0); g.fill(); g.fillRect(0, -6, 14, 3); // cap
+    }
     g.restore();
     // arms + weapon aimed
-    g.save(); g.translate(2, -62);
-    let aim = p.aim; // world angle
-    let la = f > 0 ? aim : Math.PI - aim;
+    g.save(); g.translate(2, -63);
+    let la = f > 0 ? p.aim : Math.PI - p.aim;
     la = Math.atan2(Math.sin(la), Math.cos(la));
     g.rotate(clamp(la, -1.3, 1.3));
     const glove = eq.gloves != null ? shade(RARITY[eq.gloves].color, -0.4) : '#c8956a';
-    g.strokeStyle = '#3e4a3a'; g.lineWidth = 7; g.lineCap = 'round';
-    g.beginPath(); g.moveTo(0, 0); g.lineTo(16, 2); g.stroke();
+    g.strokeStyle = shade(jacket, -0.15); g.lineWidth = 7.5; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(-2, 0); g.lineTo(16, 2); g.stroke();
     this.weapon(g, p.weaponKind, p.recoil);
-    g.fillStyle = glove; g.beginPath(); g.arc(16, 3, 4, 0, TAU); g.fill();
+    g.strokeStyle = jacket; g.lineWidth = 7; g.beginPath(); g.moveTo(-6, 3); g.lineTo(26, 3); g.stroke(); // support arm
+    g.fillStyle = glove; g.beginPath(); g.arc(16, 3, 4, 0, TAU); g.arc(28, 3, 3.6, 0, TAU); g.fill();
     g.restore();
     g.restore();
   },

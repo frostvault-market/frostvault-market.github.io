@@ -4,6 +4,7 @@ Object.assign(App, {
   // ===== main menu =====
   showMenu() {
     this.screen = 'menu';
+    this.syncMusic();
     if (!this.game || this.game.isPlat || !this.game.demo) this.startDemo();
     const s = this.save;
     const roadDone = STAGES.filter(st => s.wins[st.id]).length;
@@ -125,6 +126,7 @@ Object.assign(App, {
   // ===== buildings =====
   showBuildings() {
     this.screen = 'buildings';
+    this.syncMusic();
     const s = this.save;
     const cards = BUILDINGS.map((b, i) => {
       const locked = i >= s.bUnlocked;
@@ -279,8 +281,30 @@ Object.assign(App, {
       },
     });
     this.screen = 'foot';
+    this.syncMusic();
     this.buildFootHUD();
     this.toast(B.sub, 3.5);
+    if (!this.save.footTut) this.tutorial('foot');
+  },
+
+  // first-time hints: labels pulse on the touch pads
+  tutorial(mode) {
+    const hud = this.ui.querySelector('.hud'); if (!hud) return;
+    hud.classList.add('tut');
+    const labels = mode === 'foot'
+      ? { left: 'شمال', right: 'يمين', jump: 'نط', dash: 'زحلقة', down: 'انزل' }
+      : { brake: 'فرامل / رجوع', gas: 'بنزين', tiltB: 'ميّل لورا', tiltF: 'ميّل لقدّام', boost: 'نيترو' };
+    for (const [k, txt] of Object.entries(labels)) {
+      const pad = hud.querySelector(`.pad[data-k=${k}]`); if (!pad) continue;
+      const tip = document.createElement('div'); tip.className = 'tut-tip'; tip.textContent = txt; pad.appendChild(tip);
+    }
+    const steps = mode === 'foot'
+      ? ['بطلك بيضرب لوحده على أقرب زومبي، ركّز انت في الحركة', 'موّت كل الزومبي عشان باب الخروج يتفتح', 'بعد كل باب هتختار مهارة جديدة']
+      : ['دوس بنزين وافرم الزومبي وانت مسرّع', 'في الهوا استخدم الميلان عشان تنزل على العجل', 'صناديق ؟ فيها كروت تقوّيك'];
+    steps.forEach((m, i) => setTimeout(() => this.toast(m, 3.2), 3800 + i * 3600));
+    setTimeout(() => { hud.classList.remove('tut'); hud.querySelectorAll('.tut-tip').forEach(e => e.remove()); }, 14000);
+    if (mode === 'foot') this.save.footTut = true; else this.save.roadTut = true;
+    this.store();
   },
 
   buildFootHUD() {

@@ -89,4 +89,73 @@ const SFX = {
   roar() { this.tone(80, 1.2, 0.5, 'sawtooth', 40); this.noise(1.0, 400, 1, 0.4, 'lowpass', 100); },
   rescue() { [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => this.tone(f, 0.25, 0.14, 'sine'), i * 90)); },
   flip() { this.tone(400, 0.3, 0.15, 'triangle', 1600); },
+
+  // ===== generative music (Hijaz flavour), three moods =====
+  mus: null,
+  music(style) {
+    if (!this.ctx) return;
+    if (this.mus && this.mus.style === style) return;
+    this.stopMusic();
+    const c = this.ctx;
+    const out = c.createGain(); out.gain.value = 0; out.connect(this.master);
+    out.gain.setTargetAtTime(style === 'menu' ? 0.22 : 0.16, c.currentTime, 1.2);
+    const bpm = { menu: 84, road: 124, foot: 96 }[style];
+    const m = { style, out, step: 0, next: c.currentTime + 0.1, spb: 60 / bpm / 4, timer: null };
+    // D Hijaz: D Eb F# G A Bb C
+    const root = 146.83, scale = [0, 1, 4, 5, 7, 8, 10, 12, 13, 16];
+    const hz = (deg, oct = 0) => root * Math.pow(2, (scale[((deg % scale.length) + scale.length) % scale.length] + 12 * (oct + Math.floor(deg / scale.length))) / 12);
+    const voice = (t, f, dur, vol, type = 'sawtooth', cut = 1200, q = 1) => {
+      const o = c.createOscillator(), o2 = c.createOscillator(), fl = c.createBiquadFilter(), g = c.createGain();
+      o.type = type; o2.type = type; o.frequency.value = f; o2.frequency.value = f * 1.006;
+      fl.type = 'lowpass'; fl.frequency.value = cut; fl.Q.value = q;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + Math.min(0.03, dur * 0.2)); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(fl); o2.connect(fl); fl.connect(g); g.connect(out);
+      o.start(t); o2.start(t); o.stop(t + dur + 0.05); o2.stop(t + dur + 0.05);
+    };
+    const drum = (t, kind) => {
+      if (kind === 'k') { const o = c.createOscillator(), g = c.createGain(); o.frequency.setValueAtTime(120, t); o.frequency.exponentialRampToValueAtTime(40, t + 0.15); g.gain.setValueAtTime(0.9, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.25); o.connect(g); g.connect(out); o.start(t); o.stop(t + 0.3); return; }
+      const sN = c.createBufferSource(); sN.buffer = this.noiseBuf;
+      const f = c.createBiquadFilter(), g = c.createGain();
+      f.type = kind === 'h' ? 'highpass' : 'bandpass'; f.frequency.value = kind === 'h' ? 7000 : kind === 'd' ? 900 : 1800;
+      const v = kind === 'h' ? 0.12 : kind === 'd' ? 0.35 : 0.5, d = kind === 'h' ? 0.04 : kind === 'd' ? 0.12 : 0.18;
+      g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+      sN.connect(f); f.connect(g); g.connect(out); sN.start(t, Math.random()); sN.stop(t + d + 0.02);
+    };
+    const prog = [0, 0, 5, 3]; // chord roots by bar (degrees)
+    const mel = [7, 6, 5, 4, 5, 4, 2, 1, 0, 1, 2, 4, 5, 4, 2, 1];
+    const tick = () => {
+      while (m.next < c.currentTime + 0.15) {
+        const t = m.next, st = m.step, beat = st % 16, bar = Math.floor(st / 16) % 4;
+        const chord = prog[bar];
+        if (style === 'menu') {
+          if (beat === 0) { voice(t, hz(chord, -1), m.spb * 16, 0.08, 'sawtooth', 600); voice(t, hz(chord + 2, -1), m.spb * 16, 0.05, 'sawtooth', 700); voice(t, hz(chord - 7, -1) / 2, m.spb * 16, 0.12, 'triangle', 300); }
+          if (beat % 4 === 2 && Math.random() < 0.65) voice(t, hz(mel[(st / 2 | 0) % 16] + (Math.random() < 0.3 ? 1 : 0), 0) * 2, m.spb * 3, 0.07, 'triangle', 3000);
+          if (beat === 0 || beat === 10) drum(t, 'd');
+          if (beat === 6) drum(t, 'k');
+        } else if (style === 'road') {
+          if (beat % 2 === 0) voice(t, hz(chord, -1) / 2 * (beat % 8 === 6 ? 1.5 : 1), m.spb * 1.6, 0.14, 'sawtooth', 500, 4);
+          if (beat % 4 === 0) drum(t, 'k');
+          if (beat === 4 || beat === 12) drum(t, 's');
+          if (beat % 2 === 1) drum(t, 'h');
+          if (beat === 0) voice(t, hz(chord + 4, 0), m.spb * 14, 0.035, 'square', 900);
+          if ((bar === 3 || bar === 1) && beat % 2 === 0 && beat >= 8) voice(t, hz(mel[beat], 1), m.spb * 1.8, 0.05, 'square', 2200);
+        } else {
+          if (beat === 0) { voice(t, hz(chord, -2), m.spb * 16, 0.15, 'sawtooth', 220, 6); voice(t, hz(chord + 1, -1), m.spb * 16, 0.03, 'sawtooth', 500); }
+          if (beat === 0 || beat === 3) drum(t, 'k');
+          if (beat === 8) drum(t, 'd');
+          if (beat % 4 === 2) drum(t, 'h');
+          if (beat === 12 && Math.random() < 0.5) voice(t, hz(chord + 1, 0), m.spb * 4, 0.05, 'triangle', 1500);
+        }
+        m.step++; m.next += m.spb;
+      }
+    };
+    m.timer = setInterval(tick, 40); tick();
+    this.mus = m;
+  },
+  stopMusic() {
+    if (!this.mus) return;
+    const m = this.mus; clearInterval(m.timer);
+    try { m.out.gain.setTargetAtTime(0, this.ctx.currentTime, 0.3); setTimeout(() => m.out.disconnect(), 1500); } catch (e) { }
+    this.mus = null;
+  },
 };

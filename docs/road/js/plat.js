@@ -87,8 +87,8 @@ class PlatGame {
     this.cam.x = p.x;
     // waves
     const tierK = 0.9 + 0.22 * this.tier;
-    this.hpMul = (1 + 0.11 * (n - 1)) * (1 + 1.1 * (this.tier - 1));
-    this.dmgMul = (1 + 0.045 * (n - 1)) * (1 + 0.55 * (this.tier - 1));
+    this.hpMul = (1 + 0.13 * (n - 1)) * (1 + 1.1 * (this.tier - 1));
+    this.dmgMul = (1 + 0.055 * (n - 1)) * (1 + 0.55 * (this.tier - 1));
     const total = boss ? 0 : Math.round((5 + n * 1.15) * tierK);
     const waves = boss ? 0 : n < 4 ? 1 : n < 9 ? 2 : 3;
     this.waves = [];
@@ -123,7 +123,7 @@ class PlatGame {
     const def = boss ? BOSSES[type] : FOES[type];
     const zdef = ZOMBIES[def.art];
     const shirts = ['#6a5a4a', '#4a5a6a', '#7a3a3a', '#5a6a4a', '#8a7a5a', '#3a3a4a', '#9a8a7a', '#5a4a6a'];
-    const hp = def.hp * this.hpMul * (boss ? 1 / (1 + 0.11 * (this.n - 1)) * (1 + 0.04 * this.n) : 1);
+    const hp = def.hp * this.hpMul * (boss ? 1 / (1 + 0.13 * (this.n - 1)) * (1 + 0.04 * this.n) : 1);
     const z = {
       foe: type, type: def.art, boss: !!boss, x, y, vx: 0, vy: 0, w: def.w, h: def.h, hp, maxHp: hp,
       dir: x > this.p.x ? -1 : 1, phase: rand(0, TAU), t: rand(0, 5), seed: rand(0, 10),
@@ -131,6 +131,12 @@ class PlatGame {
       hair: pick([null, '#1a1410', '#3a2a1a']), attack: 0, onGround: false, cd: rand(1, 2.5), slowT: 0, burnT: 0, burnDps: 0, flash: 0,
       state: 'walk', stT: 0, fuse: -1, sawCd: 0, enraged: false,
     };
+    const OUT = { apartment: [null, null, 'shopper', 'suit'], hospital: ['gown', 'gown', 'nurse', 'doctor'], mall: ['shopper', 'shopper', 'suit', null], factory: ['worker', 'worker', 'hazmat', null] };
+    z.outfit = boss ? type : pick(OUT[this.B.id]);
+    if (z.outfit === 'shopper' && Math.random() < 0.5) z.bag = pick(['#c8342a', '#2a6ab8', '#e8c84a', '#8a3ab8']);
+    if (z.outfit === 'shopper') z.shirt = pick(['#c85a8a', '#4a8ac8', '#e8a84a', '#5ab88a', '#8a5ac8']);
+    if (boss && type === 'acid') z.skin = '#8ab85a';
+    if (boss && type === 'king') z.skin = '#7a7a5a';
     this.foes.push(z);
     if (boss) { this.boss = z; this.cb.boss && this.cb.boss(def.name); }
     return z;
@@ -160,7 +166,8 @@ class PlatGame {
     const view = this.viewW || 1280;
     const tx = p.x + p.face * 80;
     this.cam.x = lerp(this.cam.x, tx, 1 - Math.pow(0.001, dt));
-    this.cam.x = this.room.W <= view ? this.room.W / 2 : clamp(this.cam.x, view / 2, this.room.W - view / 2);
+    const mX = Math.min(170, view * 0.14); // let the hero sit clear of the side pads
+    this.cam.x = this.room.W <= view ? this.room.W / 2 : clamp(this.cam.x, view / 2 - mX, this.room.W - view / 2 + mX);
     this.cam.shake *= Math.pow(0.003, dt);
     this.hurtFlash = Math.max(0, (this.hurtFlash || 0) - dt * 2.5);
   }
@@ -190,7 +197,7 @@ class PlatGame {
 
   updatePlayer(dt) {
     const p = this.p, I = this.input, s = this.hs;
-    if (this.over) return;
+    if (this.over) { if (p.deadT) p.deadT += dt; p.vx *= 0.9; this.physBody(p, dt, false); return; }
     p.hurtT -= dt; p.dashCdT -= dt; p.recoil = Math.max(0, p.recoil - dt * 8); p.dropT -= dt;
     const maxSp = 300 * (1 + s.speed / 100 + p.mods.speed);
     let dir = (I.right ? 1 : 0) - (I.left ? 1 : 0);
@@ -731,6 +738,7 @@ class PlatGame {
   finish(win) {
     if (this.over) return;
     this.over = win ? 'win' : 'dead';
+    if (!win) { this.p.deadT = 0.001; SFX.tone(200, 0.8, 0.2, 'sawtooth', 60); this.fx.blood(this.p.x, this.p.y - 50, 0, -200, 30); }
     this.roomsCleared = win ? 15 : this.n - 1;
     setTimeout(() => this.cb.end && this.cb.end(this.summary()), win ? 600 : 1500);
   }
@@ -745,13 +753,18 @@ class PlatGame {
     const z = H / viewH;
     this.viewW = W / z;
     const sh = this.cam.shake;
-    const wantY = clamp(this.p.y - viewH * 0.62, viewH / 2 + 20 - viewH / 2, ROOM_H - viewH) + viewH / 2;
+    // keep the floor above the touch pads; follow the hero up to the shelves
+    const padH = Math.min(150, H * 0.26);
+    const floorCam = FLOOR_Y - (H / 2 - padH) / z;
+    const wantY = Math.min(floorCam, Math.max(this.p.y - 120, H / 2 / z - 20));
     this.cam.y = lerp(this.cam.y ?? wantY, wantY, 0.08);
     const camX = this.cam.x + (Math.random() - 0.5) * sh, camY = this.cam.y + (Math.random() - 0.5) * sh;
     g.setTransform(1, 0, 0, 1, 0, 0);
     g.fillStyle = '#050304'; g.fillRect(0, 0, R.cv.width, R.cv.height);
     const ox = W / 2 - camX * z, oy = H / 2 - camY * z;
     g.setTransform(dpr * z, 0, 0, dpr * z, ox * dpr, oy * dpr);
+    g.fillStyle = shade(this.B.floor, -0.6); g.fillRect(-400, ROOM_H - 2, this.room.W + 800, 500);
+    g.fillStyle = '#0a0607'; g.fillRect(-400, -200, 400, ROOM_H + 700); g.fillRect(this.room.W, -200, 400, ROOM_H + 700);
     g.drawImage(this.bg, 0, 0, this.room.W, ROOM_H);
     const room = this.room, t = this.t;
     // floor decals

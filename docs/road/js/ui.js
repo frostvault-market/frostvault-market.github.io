@@ -11,6 +11,7 @@ const App = {
     window.addEventListener('resize', () => { this.renderer.resize(); });
     document.addEventListener('visibilitychange', () => { if (document.hidden && this.game && !this.game.over) { if (this.screen === 'run') this.pause(); else if (this.screen === 'foot') this.pauseFoot(); } });
     this.bindKeys();
+    if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => { });
     this.startDemo();
     this.showMenu();
     let last = performance.now();
@@ -30,10 +31,14 @@ const App = {
     };
     requestAnimationFrame(loop);
     // unlock audio on first gesture
-    const unlock = () => { SFX.init(); window.removeEventListener('pointerdown', unlock); window.removeEventListener('keydown', unlock); };
+    const unlock = () => { SFX.init(); this.syncMusic(); window.removeEventListener('pointerdown', unlock); window.removeEventListener('keydown', unlock); };
     window.addEventListener('pointerdown', unlock); window.addEventListener('keydown', unlock);
   },
 
+  syncMusic() {
+    if (!SFX.ctx) return;
+    SFX.music(this.screen === 'run' ? 'road' : this.screen === 'foot' ? 'foot' : 'menu');
+  },
   // ===== save =====
   loadSave() {
     let s = null;
@@ -117,6 +122,7 @@ const App = {
   // ===== stages =====
   showStages() {
     this.screen = 'stages';
+    this.syncMusic();
     const cards = STAGES.map((st, i) => {
       const locked = i >= this.save.unlocked;
       const best = this.save.best[st.id] || 0;
@@ -255,10 +261,12 @@ const App = {
       },
     });
     this.screen = 'run';
+    this.syncMusic();
     this.buildHUD();
     SFX.startEngine();
     this.save.runs++;
     this.game.say(STAGES[i].sub, 3.5);
+    if (!this.save.roadTut) this.tutorial('road');
   },
 
   buildHUD() {

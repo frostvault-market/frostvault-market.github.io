@@ -362,3 +362,11 @@ button { font-family: inherit; color: inherit; cursor: pointer; border: 0; backg
   .door-pips i { width: 13px; height: 13px; } .door-pips i.boss { width: 17px; height: 17px; }
 }
 @media (max-width: 760px) { .stage-list { grid-template-columns: repeat(2, 1fr); } .how-grid { grid-template-columns: 1fr; } .inv-body { grid-template-columns: 1fr; } }
+
+/* tutorial */
+.tut .pad { animation: tutPulse 1.1s ease-in-out infinite; overflow: visible; }
+@keyframes tutPulse { 50% { box-shadow: 0 0 0 8px rgba(255,207,74,.35), 0 6px 18px rgba(0,0,0,.45); } }
+.tut-tip { position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%); white-space: nowrap; max-width: 40vw; overflow: hidden; text-overflow: ellipsis;
+  background: rgba(20,14,12,.92); border: 1px solid rgba(255,200,80,.6); color: #ffe9b0; font-size: 12px; font-weight: 900; padding: 3px 10px; border-radius: 10px; pointer-events: none; }
+.foot .hud-msg { top: auto; bottom: calc(18px + var(--sa-b)); max-width: 46vw; font-size: 15px; }
+@media (max-height: 520px) { .foot .hud-msg { bottom: calc(8px + var(--sa-b)); font-size: 13px; padding: 6px 14px; } }
