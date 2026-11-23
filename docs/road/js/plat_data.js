@@ -77,3 +77,17 @@ const SKILLS = [
   { id: 'grenade', name: 'قنابل', desc: 'بترمي قنبلة كل 4 ثواني', icon: 'grenade', r: 2, max: 2, apply: p => p.grenades += 1 },
   { id: 'revive', name: 'روح تانية', desc: 'لو مت هتقوم تاني بنص صحتك (مرة واحدة)', icon: 'revive', r: 2, max: 1, apply: p => p.revive = 1 },
 ];
+
+// special car parts: reward for clearing each building, used in the road mode
+const CAR_PARTS = {
+  apartment: { name: 'صندوق عدّة', desc: 'بتبدأ كل رحلة على الطريق بكارت مجاني', icon: 'wrench', tone: 'steel' },
+  hospital: { name: 'شنطة إسعاف العربية', desc: 'العربية بتتصلح لوحدها 1.5 كل ثانية', icon: 'firstaid', tone: 'red' },
+  mall: { name: 'مغناطيس جبّار', desc: 'السكراب على الطريق +25% ومغناطيس أوسع', icon: 'magnet', tone: 'blue' },
+  factory: { name: 'موتور صاروخي', desc: 'قوة الموتور +10% والنيترو +35%', icon: 'rocket', tone: 'orange' },
+};
+function applyCarParts(s, parts) {
+  if (!parts) return;
+  if (parts.hospital) s.regen += 1.5;
+  if (parts.mall) { s.scrapMul *= 1.25; s.magnet += 80; }
+  if (parts.factory) { s.engineMul *= 1.1; s.nitroMax *= 1.35; }
+}

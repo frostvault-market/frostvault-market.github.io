@@ -140,6 +140,7 @@ Object.assign(App, {
           <div class="stage-sub">${b.sub}</div>
           <div class="doors">${Array.from({ length: 15 }, (_, k) => `<i class="${k < best ? 'on' : ''} ${(k + 1) % 5 === 0 ? 'boss' : ''}"></i>`).join('')}</div>
           <div class="stage-meta">${won ? '<span class="won">✔ نضّفته</span>' : best ? `أبعد باب: ${arNum(best)}` : 'لسه مادخلتوش'}</div>
+          <div class="part-reward ${s.parts[b.id] ? 'has' : ''}">${icon(CAR_PARTS[b.id].icon, 14)} الجايزة: ${CAR_PARTS[b.id].name}</div>
         </div>
         ${locked ? `<div class="lock">${badge('lock', 'steel', 48)}<span>نضّف المبنى اللي قبله</span></div>` : ''}
       </div>`;
@@ -430,6 +431,8 @@ Object.assign(App, {
     const reached = sum.win ? 15 : Math.max(0, sum.rooms);
     s.bBest[B.id] = Math.max(s.bBest[B.id] || 0, reached);
     let unlocked = false;
+    let newPart = null;
+    if (sum.win && !s.parts[B.id]) { s.parts[B.id] = true; newPart = CAR_PARTS[B.id]; }
     if (sum.win) { s.bWins[B.id] = true; if (this.bIdx + 1 >= s.bUnlocked && s.bUnlocked < BUILDINGS.length) { s.bUnlocked = this.bIdx + 2; unlocked = true; } }
     this.store();
     const wrap = document.createElement('div');
@@ -442,6 +445,7 @@ Object.assign(App, {
         <div><small>زومبي اتقتل</small><b>${arNum(sum.kills)}</b></div>
         <div><small>سكراب</small><b>${fmt(total)}</b></div>
       </div>
+      ${newPart ? `<div class="new-part">${badge(newPart.icon, newPart.tone, 52)}<div><small>قطعة جديدة للعربية!</small><b>${newPart.name}</b><span>${newPart.desc}</span></div></div>` : ''}
       ${sum.loot.length ? `<div class="loot-row"><small>الغنايم اللي لقيتها (اتحطت في الشنطة)</small><div>${sum.loot.map(it => `<span class="lr r${it.r}">${badge(itemIcon(it), RARITY[it.r].tone, 44)}<b>${it.name}</b></span>`).join('')}</div></div>` : ''}
       <p class="tip">${sum.win ? (unlocked ? `اتفتح مبنى جديد: ${BUILDINGS[this.bIdx + 1].name}` : `مكافأة المبنى +${fmt(sum.bonus)}`) : 'طوّر عدّتك من الشنطة، أو جرّب سلاح تاني.'}</p>
       <div class="row">

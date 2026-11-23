@@ -46,7 +46,7 @@ const App = {
     if (!s) s = {};
     s.scrap ??= 0; s.owned ??= ['sedan']; s.sel ??= 'sedan'; s.levels ??= {}; s.unlocked ??= 1; s.best ??= {}; s.muted ??= false; s.runs ??= 0; s.wins ??= {};
     for (const v of VEHICLES) { s.levels[v.id] ??= {}; for (const u of UPGRADES) s.levels[v.id][u.id] ??= 0; }
-    s.inv ??= null; s.eq ??= {}; s.bUnlocked ??= 1; s.bBest ??= {}; s.bWins ??= {};
+    s.inv ??= null; s.parts ??= {}; s.eq ??= {}; s.bUnlocked ??= 1; s.bBest ??= {}; s.bWins ??= {};
     if (!s.inv) { // starter kit
       const gun = makeItem('weapon', 0, 1, 'pistol'), boots = makeItem('boots', 0, 1);
       s.inv = [gun, boots]; s.eq = { weapon: gun.uid, boots: boots.uid };
@@ -205,7 +205,8 @@ const App = {
             ${owned ? (this.save.sel === v.id ? '<div class="chosen">✔ دي العربية اللي هتسوقها</div>' : '<button class="btn primary" data-a="select">اختارها</button>')
               : `<button class="btn primary ${this.save.scrap < v.price ? 'dis' : ''}" data-a="buy">اشتريها ${icon('scrap', 16)} ${fmt(v.price)}</button>`}
           </div>
-          <div class="ups-col">${owned ? '' : '<div class="ups-lock">اشتري العربية الأول عشان تطوّرها</div>'}${ups}</div>
+          <div class="ups-col">${owned ? '' : '<div class="ups-lock">اشتري العربية الأول عشان تطوّرها</div>'}${ups}
+<div class="parts-strip">${icon('house', 18)}<span>قطع من المباني:</span>${BUILDINGS.map(b => { const cp = CAR_PARTS[b.id], has = this.save.parts[b.id]; return `<span class="part ${has ? 'has' : ''}" title="${cp.desc}">${has ? badge(cp.icon, cp.tone, 34) : `<span class="badge empty" style="--s:34px">${icon('lock', 16)}</span>`}<small>${has ? cp.name : b.name}</small></span>`; }).join('')}</div></div>
         </div>
         ${fromStages ? '<button class="btn primary go" data-a="go">يلا على الطريق</button>' : ''}
       </div>`);
@@ -254,6 +255,7 @@ const App = {
     SFX.init();
     this.game = new Game({
       stage: STAGES[i], vehicle: veh, levels: { ...this.save.levels[veh.id] },
+      parts: this.save.parts,
       callbacks: {
         cards: (ch) => this.showCards(ch),
         end: (sum) => this.showResults(sum),

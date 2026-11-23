@@ -23,6 +23,7 @@ class Game {
     this.def = opts.vehicle;
     this.lv = opts.levels;
     this.s = buildStats(this.def, this.lv);
+    applyCarParts(this.s, opts.parts);
     const sy = this.world.groundY(300) - 90;
     this.car = new Car(this.def, this.lv, this.s, 300, sy);
     this.car.rockets = 0; this.car.shock = 0; this.car.saw = false;
@@ -44,6 +45,7 @@ class Game {
     for (const ev of this.world.events) if (ev.type === 'survivor') ev.who = this.survivorPool.pop() || SURVIVORS[0];
     this.callbacks = opts.callbacks || {};
     this.acc = 0;
+    if (opts.parts && opts.parts.apartment && !this.demo) setTimeout(() => { if (!this.over) this.openCards(); }, 1600);
   }
 
   shake(a) { this.cam.shake = Math.min(30, this.cam.shake + a); }
